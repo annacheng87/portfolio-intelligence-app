@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
-const { v4: uuidv4 } = require('uuid');
 const requireAuth = require('../middleware/auth');
+const { v4: uuidv4 } = require('uuid');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -17,10 +17,10 @@ router.get('/holdings', requireAuth, async (req, res) => {
        WHERE bc."userId" = $1`,
       [req.userId]
     );
-    return res.json({ holdings: result.rows });
+    res.json({ holdings: result.rows });
   } catch (err) {
     console.error('HOLDINGS ERROR:', err);
-    return res.status(500).json({ error: 'Could not fetch holdings.' });
+    res.status(500).json({ error: 'Could not fetch holdings.' });
   }
 });
 
@@ -31,30 +31,28 @@ router.get('/watchlist', requireAuth, async (req, res) => {
       `SELECT * FROM "WatchlistItem" WHERE "userId" = $1 ORDER BY "addedAt" DESC`,
       [req.userId]
     );
-    return res.json({ watchlist: result.rows });
+    res.json({ watchlist: result.rows });
   } catch (err) {
-    console.error('WATCHLIST GET ERROR:', err);
-    return res.status(500).json({ error: 'Could not fetch watchlist.' });
+    console.error('WATCHLIST ERROR:', err);
+    res.status(500).json({ error: 'Could not fetch watchlist.' });
   }
 });
 
 // POST /api/portfolio/watchlist
 router.post('/watchlist', requireAuth, async (req, res) => {
   const { ticker } = req.body;
-
-  if (!ticker) {
-    return res.status(400).json({ error: 'Ticker is required.' });
-  }
+  if (!ticker) return res.status(400).json({ error: 'Ticker is required.' });
 
   try {
+    const id = uuidv4();
     const result = await pool.query(
       `INSERT INTO "WatchlistItem" (id, "userId", ticker) VALUES ($1, $2, $3) RETURNING *`,
-      [uuidv4(), req.userId, ticker.toUpperCase()]
+      [id, req.userId, ticker.toUpperCase()]
     );
-    return res.status(201).json({ item: result.rows[0] });
+    res.status(201).json({ item: result.rows[0] });
   } catch (err) {
-    console.error('WATCHLIST POST ERROR:', err);
-    return res.status(500).json({ error: 'Could not add to watchlist.', details: err.message });
+    console.error('ADD WATCHLIST ERROR:', err);
+    res.status(500).json({ error: 'Could not add to watchlist.' });
   }
 });
 
@@ -65,10 +63,10 @@ router.delete('/watchlist/:ticker', requireAuth, async (req, res) => {
       `DELETE FROM "WatchlistItem" WHERE "userId" = $1 AND ticker = $2`,
       [req.userId, req.params.ticker.toUpperCase()]
     );
-    return res.json({ message: 'Removed from watchlist.' });
+    res.json({ message: 'Removed from watchlist.' });
   } catch (err) {
-    console.error('WATCHLIST DELETE ERROR:', err);
-    return res.status(500).json({ error: 'Could not remove from watchlist.' });
+    console.error('REMOVE WATCHLIST ERROR:', err);
+    res.status(500).json({ error: 'Could not remove from watchlist.' });
   }
 });
 
@@ -79,24 +77,10 @@ router.get('/alerts', requireAuth, async (req, res) => {
       `SELECT * FROM "Alert" WHERE "userId" = $1 ORDER BY "triggeredAt" DESC LIMIT 50`,
       [req.userId]
     );
-    return res.json({ alerts: result.rows });
+    res.json({ alerts: result.rows });
   } catch (err) {
     console.error('ALERTS ERROR:', err);
-    return res.status(500).json({ error: 'Could not fetch alerts.' });
-  }
-});
-
-// GET /api/portfolio/snapshots
-router.get('/snapshots', requireAuth, async (req, res) => {
-  try {
-    const result = await pool.query(
-      `SELECT * FROM "PortfolioSnapshot" WHERE "userId" = $1 ORDER BY "snapshotAt" DESC LIMIT 30`,
-      [req.userId]
-    );
-    return res.json({ snapshots: result.rows });
-  } catch (err) {
-    console.error('SNAPSHOTS ERROR:', err);
-    return res.status(500).json({ error: 'Could not fetch snapshots.' });
+    res.status(500).json({ error: 'Could not fetch alerts.' });
   }
 });
 
