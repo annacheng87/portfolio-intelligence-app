@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  hashedPassword   String
+  displayName      String
+  leaderboardOptIn Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  brokerConnections BrokerConnection[]
+  watchlistItems    WatchlistItem[]
+  alerts            Alert[]
+  portfolioSnapshots PortfolioSnapshot[]
+}
+
+model BrokerConnection {
+  id                 String   @id @default(uuid())
+  userId             String
+  provider           String   // e.g. "snaptrade"
+  encryptedToken     String
+  accountId          String
+  lastSyncedAt       DateTime?
+
+  user     User      @relation(fields: [userId], references: [id])
+  holdings Holding[]
+}
+
+model Holding {
+  id                 String   @id @default(uuid())
+  brokerConnectionId String
+  ticker             String
+  quantity           Decimal
+  avgCostBasis       Decimal
+  updatedAt          DateTime @updatedAt
+
+  brokerConnection BrokerConnection @relation(fields: [brokerConnectionId], references: [id])
+}
+
+model WatchlistItem {
+  id        String   @id @default(uuid())
+  userId    String
+  ticker    String
+  addedAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Alert {
+  id                 String   @id @default(uuid())
+  userId             String
+  ticker             String
+  alertType          String   // "price_move", "volume_spike", "news"
+  plainEnglishSummary String
+  riskNote           String
+  isRead             Boolean  @default(false)
+  triggeredAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model PortfolioSnapshot {
+  id              String   @id @default(uuid())
+  userId          String
+  totalValue      Decimal
+  dailyPctChange  Decimal
+  snapshotAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
