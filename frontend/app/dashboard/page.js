@@ -149,7 +149,7 @@ export default function DashboardPage() {
         {activeTab === 'alerts' && (
           <div style={s.panel}>
             {alerts.length === 0 ? (
-              <div style={s.empty}>No alerts yet. These will appear once the alerts engine is running in Phase 2.</div>
+              <div style={s.empty}>No alerts yet. These will appear once the alerts engine is running.</div>
             ) : (
               alerts.map(alert => (
                 <div key={alert.id} style={{ ...s.alertCard, opacity: alert.isRead ? 0.6 : 1 }}>
@@ -159,6 +159,32 @@ export default function DashboardPage() {
                   </div>
                   <p style={s.alertSummary}>{alert.plainEnglishSummary}</p>
                   {alert.riskNote && <p style={s.alertRisk}>⚠ {alert.riskNote}</p>}
+
+                  {alert.newsUrl && (
+                    <div style={s.sourceRow}>
+                      <span style={s.sourceLabel}>📰 Top news</span>
+                      <a href={alert.newsUrl} target="_blank" rel="noopener noreferrer" style={s.sourceLink}>
+                        {alert.newsHeadline
+                          ? alert.newsHeadline.length > 80
+                            ? alert.newsHeadline.slice(0, 80) + '...'
+                            : alert.newsHeadline
+                          : 'Read article →'}
+                      </a>
+                    </div>
+                  )}
+
+                  {alert.redditUrl && (
+                    <div style={s.sourceRow}>
+                      <span style={s.sourceLabel}>💬 Top Reddit post</span>
+                      <a href={alert.redditUrl} target="_blank" rel="noopener noreferrer" style={s.sourceLink}>
+                        {alert.redditTitle
+                          ? alert.redditTitle.length > 80
+                            ? alert.redditTitle.slice(0, 80) + '...'
+                            : alert.redditTitle
+                          : 'View post →'}
+                      </a>
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -198,4 +224,7 @@ const s = {
   alertType: { fontSize: 11, background: '#f0f0ef', color: '#666', borderRadius: 4, padding: '2px 8px' },
   alertSummary: { fontSize: 13, color: '#333', margin: '0 0 6px' },
   alertRisk: { fontSize: 12, color: '#b45', margin: 0 },
+  sourceRow: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 8, padding: '8px 10px', background: '#f9f9f8', borderRadius: 6 },
+  sourceLabel: { fontSize: 11, color: '#888', fontWeight: 500 },
+  sourceLink: { fontSize: 12, color: '#1a1a18', textDecoration: 'underline', cursor: 'pointer', lineHeight: 1.4 },
 };

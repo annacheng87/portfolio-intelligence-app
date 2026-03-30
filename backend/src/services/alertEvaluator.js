@@ -1,6 +1,8 @@
 const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
 const { getSnapshots } = require('./marketData');
+const { getTickerSentiment, sentimentToEnglish } = require('./newsSentiment');
+const { getTickerRedditSentiment, redditSentimentToEnglish } = require('./redditSentiment');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -9,23 +11,26 @@ const pool = new Pool({
 const PRICE_MOVE_THRESHOLD = 0.05;
 const VOLUME_SPIKE_THRESHOLD = 2.0;
 
-function generateAlertMessage(ticker, type, data) {
+function generateAlertMessage(ticker, type, data, newsSentiment, redditSentiment) {
+  const newsLine = newsSentiment ? `\n${sentimentToEnglish(newsSentiment)}` : '';
+  const redditLine = redditSentiment ? `\n${redditSentimentToEnglish(ticker, redditSentiment)}` : '';
+
   if (type === 'price_up') {
     return {
-      plainEnglishSummary: `${ticker} is up ${data.pctChange.toFixed(1)}% today, trading at $${data.price.toFixed(2)}.`,
+      plainEnglishSummary: `${ticker} is up ${data.pctChange.toFixed(1)}% today, trading at $${data.price.toFixed(2)}.${newsLine}${redditLine}`,
       riskNote: `Sharp moves up can reverse quickly. Consider whether this changes your thesis on ${ticker} before acting.`,
     };
   }
   if (type === 'price_down') {
     return {
-      plainEnglishSummary: `${ticker} is down ${Math.abs(data.pctChange).toFixed(1)}% today, trading at $${data.price.toFixed(2)}.`,
+      plainEnglishSummary: `${ticker} is down ${Math.abs(data.pctChange).toFixed(1)}% today, trading at $${data.price.toFixed(2)}.${newsLine}${redditLine}`,
       riskNote: `A drop this size could be temporary or signal a larger trend. Avoid panic selling without checking the news first.`,
     };
   }
   if (type === 'volume_spike') {
     return {
-      plainEnglishSummary: `${ticker} is seeing unusually high trading volume today — ${data.volumeMultiple.toFixed(1)}x its normal level.`,
-      riskNote: `High volume often precedes big price moves in either direction. Worth investigating before acting.`,
+      plainEnglishSummary: `${ticker} is seeing unusually high trading volume — ${data.volumeMultiple.toFixed(1)}x normal.${newsLine}${redditLine}`,
+      riskNote: `High volume often precedes big price moves. Worth investigating before acting.`,
     };
   }
   return { plainEnglishSummary: '', riskNote: '' };
@@ -75,13 +80,20 @@ async function evaluateWatchlists() {
       const pctChange = ((price - open) / open) * 100;
       const volumeMultiple = avgVolume ? volume / avgVolume : 0;
 
+      console.log(`Fetching sentiment for ${ticker}...`);
+      const [newsSentiment, redditSentiment] = await Promise.all([
+        getTickerSentiment(ticker),
+        getTickerRedditSentiment(ticker),
+      ]);
+      console.log(`${ticker} — news: ${newsSentiment.label}, reddit: ${redditSentiment.label} (${redditSentiment.postCount} posts)`);
+
       const usersWatching = watchlistItems.filter(item => item.ticker === ticker);
 
       for (const user of usersWatching) {
         if (Math.abs(pctChange) >= PRICE_MOVE_THRESHOLD * 100) {
           const type = pctChange > 0 ? 'price_up' : 'price_down';
           const { plainEnglishSummary, riskNote } = generateAlertMessage(
-            ticker, type, { pctChange, price }
+            ticker, type, { pctChange, price }, newsSentiment, redditSentiment
           );
 
           const today = new Date();
@@ -94,8 +106,15 @@ async function evaluateWatchlists() {
 
           if (existing.rows.length === 0) {
             await pool.query(
-              `INSERT INTO "Alert" (id, "userId", ticker, "alertType", "plainEnglishSummary", "riskNote") VALUES ($1, $2, $3, $4, $5, $6)`,
-              [uuidv4(), user.userId, ticker, type, plainEnglishSummary, riskNote]
+              `INSERT INTO "Alert" (id, "userId", ticker, "alertType", "plainEnglishSummary", "riskNote", "newsUrl", "newsHeadline", "redditUrl", "redditTitle")
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+              [
+                uuidv4(), user.userId, ticker, type, plainEnglishSummary, riskNote,
+                newsSentiment?.topArticle?.url || null,
+                newsSentiment?.topArticle?.headline || null,
+                redditSentiment?.topPost?.url || null,
+                redditSentiment?.topPost?.title || null,
+              ]
             );
             console.log(`Alert created: ${type} for ${ticker} → ${user.email}`);
           }
@@ -103,7 +122,7 @@ async function evaluateWatchlists() {
 
         if (volumeMultiple >= VOLUME_SPIKE_THRESHOLD) {
           const { plainEnglishSummary, riskNote } = generateAlertMessage(
-            ticker, 'volume_spike', { volumeMultiple }
+            ticker, 'volume_spike', { volumeMultiple }, newsSentiment, redditSentiment
           );
 
           const today = new Date();
@@ -116,8 +135,15 @@ async function evaluateWatchlists() {
 
           if (existing.rows.length === 0) {
             await pool.query(
-              `INSERT INTO "Alert" (id, "userId", ticker, "alertType", "plainEnglishSummary", "riskNote") VALUES ($1, $2, $3, $4, $5, $6)`,
-              [uuidv4(), user.userId, ticker, 'volume_spike', plainEnglishSummary, riskNote]
+              `INSERT INTO "Alert" (id, "userId", ticker, "alertType", "plainEnglishSummary", "riskNote", "newsUrl", "newsHeadline", "redditUrl", "redditTitle")
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+              [
+                uuidv4(), user.userId, ticker, 'volume_spike', plainEnglishSummary, riskNote,
+                newsSentiment?.topArticle?.url || null,
+                newsSentiment?.topArticle?.headline || null,
+                redditSentiment?.topPost?.url || null,
+                redditSentiment?.topPost?.title || null,
+              ]
             );
             console.log(`Alert created: volume_spike for ${ticker} → ${user.email}`);
           }
