@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 const { getSnapshots } = require('./marketData');
 const { getTickerSentiment, sentimentToEnglish } = require('./newsSentiment');
 const { getTickerRedditSentiment, redditSentimentToEnglish } = require('./redditSentiment');
+const { sendRealtimeAlertEmail } = require('./emailService');  // ← NEW
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -78,6 +79,7 @@ async function evaluateWatchlists() {
       }
 
       const pctChange = ((price - open) / open) * 100;
+      const priceChange = price - open;                     // ← NEW: dollar change
       const volumeMultiple = avgVolume ? volume / avgVolume : 0;
 
       console.log(`Fetching sentiment for ${ticker}...`);
@@ -90,6 +92,8 @@ async function evaluateWatchlists() {
       const usersWatching = watchlistItems.filter(item => item.ticker === ticker);
 
       for (const user of usersWatching) {
+
+        // ── Price alert ───────────────────────────────────────────────────────
         if (Math.abs(pctChange) >= PRICE_MOVE_THRESHOLD * 100) {
           const type = pctChange > 0 ? 'price_up' : 'price_down';
           const { plainEnglishSummary, riskNote } = generateAlertMessage(
@@ -117,9 +121,33 @@ async function evaluateWatchlists() {
               ]
             );
             console.log(`Alert created: ${type} for ${ticker} → ${user.email}`);
+
+            // ── SEND EMAIL ────────────────────────────────────────────────────
+            try {
+              await sendRealtimeAlertEmail(user.email, {
+                ticker,
+                alertType:          type,
+                pctChange,
+                currentPrice:       price,
+                priceChange,
+                portfolioWeight:    0,   // watchlist-only — no portfolio weight yet
+                positionValue:      null,
+                plainEnglishSummary,
+                riskNote,
+                newsHeadline:       newsSentiment?.topArticle?.headline || null,
+                newsUrl:            newsSentiment?.topArticle?.url      || null,
+                redditTitle:        redditSentiment?.topPost?.title     || null,
+                redditUrl:          redditSentiment?.topPost?.url       || null,
+              });
+            } catch (emailErr) {
+              // Never let email failure crash the evaluator
+              console.error(`[emailService] Failed to send alert email to ${user.email}:`, emailErr.message);
+            }
+            // ─────────────────────────────────────────────────────────────────
           }
         }
 
+        // ── Volume spike alert ────────────────────────────────────────────────
         if (volumeMultiple >= VOLUME_SPIKE_THRESHOLD) {
           const { plainEnglishSummary, riskNote } = generateAlertMessage(
             ticker, 'volume_spike', { volumeMultiple }, newsSentiment, redditSentiment
@@ -146,8 +174,31 @@ async function evaluateWatchlists() {
               ]
             );
             console.log(`Alert created: volume_spike for ${ticker} → ${user.email}`);
+
+            // ── SEND EMAIL ────────────────────────────────────────────────────
+            try {
+              await sendRealtimeAlertEmail(user.email, {
+                ticker,
+                alertType:          'volume_spike',
+                pctChange:          pctChange,
+                currentPrice:       price,
+                priceChange,
+                portfolioWeight:    0,
+                positionValue:      null,
+                plainEnglishSummary,
+                riskNote,
+                newsHeadline:       newsSentiment?.topArticle?.headline || null,
+                newsUrl:            newsSentiment?.topArticle?.url      || null,
+                redditTitle:        redditSentiment?.topPost?.title     || null,
+                redditUrl:          redditSentiment?.topPost?.url       || null,
+              });
+            } catch (emailErr) {
+              console.error(`[emailService] Failed to send volume alert email to ${user.email}:`, emailErr.message);
+            }
+            // ─────────────────────────────────────────────────────────────────
           }
         }
+
       }
     }
 

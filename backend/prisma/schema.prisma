@@ -1,6 +1,6 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
+ 
 }
 
 datasource db {
@@ -21,6 +21,7 @@ model User {
   watchlistItems     WatchlistItem[]
   alerts             Alert[]
   portfolioSnapshots PortfolioSnapshot[]
+  alertPreferences   AlertPreference[]
 }
 
 model BrokerConnection {
@@ -65,8 +66,55 @@ model Alert {
   isRead              Boolean  @default(false)
   triggeredAt         DateTime @default(now())
 
+  // News + Reddit context (added to match alertEvaluator.js)
+  newsUrl       String?
+  newsHeadline  String?
+  redditUrl     String?
+  redditTitle   String?
+
   user User @relation(fields: [userId], references: [id])
 }
+
+model AlertPreference {
+  id        String   @id @default(uuid())
+  userId    String
+  alertType String   // matches the alert type keys below
+  enabled   Boolean  @default(true)
+  threshold Decimal? // optional — used for % thresholds like price move, portfolio change
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, alertType]) // one row per user per alert type
+}
+
+// AlertPreference alertType values:
+// --- Real-time ---
+// "large_holding_move"       — individual stock moves X% and is >= min portfolio weight
+// "portfolio_value_change"   — total portfolio moves X% or $X in a day
+// "drawdown"                 — portfolio drops X% from 30-day high
+// "watchlist_price_target"   — watchlist stock crosses user-set price target
+// "major_news"               — major news on held or watchlisted stock
+// "earnings"                 — earnings reminder + post-earnings alert
+// "volume_spike"             — unusual volume on held or watchlisted stock
+//
+// --- Digest (batched) ---
+// "concentration_risk"       — one holding exceeds X% of portfolio (weekly reminder)
+// "cost_basis_deviation"     — holding moves X% from cost basis
+// "dividend_corporate"       — ex-dividend dates, splits, mergers
+// "reddit_alignment"         — Reddit + price + news multi-signal
+// "watchlist_move"           — watchlist stock moves X% with no price target set
+// "watchlist_news"           — news on watchlist stock (digest unless high-priority)
+//
+// --- Leaderboard ---
+// "rank_passed"              — someone passes your rank
+// "top_3_entered"            — you enter top 3 or top 10
+// "streak_milestone"         — performance streak or milestone
+//
+// --- Digests ---
+// "daily_digest"             — daily after-market email
+// "weekly_digest"            — weekly Saturday morning email
+// "sms_realtime"             — SMS for real-time alerts
 
 model PortfolioSnapshot {
   id             String   @id @default(uuid())

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no">
+<title>TrendEdge AI · Weekly Digest</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+  table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+  img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+  body { margin: 0; padding: 0; width: 100% !important; min-width: 100%; }
+
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap');
+
+  .email-body { background-color: #060810; width: 100%; }
+  .email-wrapper { max-width: 600px; margin: 0 auto; padding: 28px 16px; }
+
+  /* Hero header */
+  .weekly-hero { background: #0D1120; border-radius: 12px 12px 0 0; border: 1px solid rgba(255,255,255,0.07); border-bottom: none; padding: 28px 24px 24px; position: relative; overflow: hidden; }
+  .hero-accent { position: absolute; top: 0; right: 0; width: 200px; height: 200px; background: radial-gradient(circle at top right, rgba(59,130,246,0.08) 0%, transparent 70%); pointer-events: none; }
+  .logo-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .logo-mono { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; color: #3B82F6; text-transform: uppercase; }
+  .week-badge { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; background: rgba(59,130,246,0.1); color: #60A5FA; border: 1px solid rgba(59,130,246,0.2); }
+  .hero-title { font-family: 'DM Sans', sans-serif; font-size: 26px; font-weight: 600; color: #F1F5F9; margin: 0 0 6px; }
+  .hero-sub { font-family: 'DM Sans', sans-serif; font-size: 13px; color: rgba(255,255,255,0.38); margin: 0 0 22px; }
+  .hero-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 0; }
+
+  /* Weekly performance scorecard */
+  .scorecard { background: #0D1120; border: 1px solid rgba(255,255,255,0.07); border-top: none; border-bottom: none; }
+  .scorecard-inner { padding: 20px 24px; }
+  .scorecard-grid { display: flex; gap: 0; }
+  .sc-cell { flex: 1; text-align: center; position: relative; }
+  .sc-cell::after { content: ''; position: absolute; right: 0; top: 6px; bottom: 6px; width: 1px; background: rgba(255,255,255,0.06); }
+  .sc-cell:last-child::after { display: none; }
+  .sc-val { font-family: 'DM Mono', monospace; font-size: 24px; font-weight: 500; }
+  .sc-val.up { color: #10B981; }
+  .sc-val.down { color: #F87171; }
+  .sc-val.neutral { color: #F1F5F9; }
+  .sc-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.25); margin-top: 5px; }
+  .sc-delta { font-family: 'DM Sans', sans-serif; font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 3px; }
+
+  /* Week sparkline strip (text-based) */
+  .sparkline-strip { padding: 12px 24px 16px; border-top: 1px solid rgba(255,255,255,0.05); }
+  .spark-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.22); margin-bottom: 8px; }
+  .spark-days { display: flex; gap: 4px; align-items: flex-end; height: 32px; }
+  .spark-bar { flex: 1; border-radius: 2px 2px 0 0; min-height: 3px; }
+  .spark-day-label { display: flex; justify-content: space-between; margin-top: 4px; }
+  .spark-day-name { font-family: 'DM Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.2); flex: 1; text-align: center; }
+
+  /* Body sections */
+  .digest-body { background: #0D1120; border: 1px solid rgba(255,255,255,0.07); border-top: none; border-radius: 0 0 12px 12px; overflow: hidden; }
+  .w-section { border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .w-section:last-child { border-bottom: none; }
+  .w-section-header { padding: 16px 24px 4px; display: flex; align-items: center; gap: 10px; }
+  .w-section-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.25); }
+  .w-section-content { padding: 8px 24px 18px; }
+
+  /* Best/worst split */
+  .bw-grid { display: flex; gap: 12px; }
+  .bw-card { flex: 1; background: rgba(255,255,255,0.03); border-radius: 8px; padding: 14px; border: 1px solid rgba(255,255,255,0.05); }
+  .bw-card-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 10px; }
+  .bw-best-label { color: rgba(16,185,129,0.6); }
+  .bw-worst-label { color: rgba(248,113,113,0.6); }
+  .bw-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .bw-item:last-child { margin-bottom: 0; }
+  .bw-ticker { font-family: 'DM Mono', monospace; font-size: 13px; color: #E2E8F0; }
+  .bw-pct { font-family: 'DM Mono', monospace; font-size: 13px; }
+  .bw-pct.up { color: #10B981; }
+  .bw-pct.down { color: #F87171; }
+
+  /* News themes */
+  .theme-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); align-items: flex-start; }
+  .theme-item:last-child { border-bottom: none; }
+  .theme-num { font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 500; color: rgba(255,255,255,0.12); line-height: 1.2; flex-shrink: 0; min-width: 28px; }
+  .theme-body { flex: 1; }
+  .theme-title { font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.78); margin: 0 0 3px; }
+  .theme-desc { font-family: 'DM Sans', sans-serif; font-size: 12px; color: rgba(255,255,255,0.38); line-height: 1.55; margin: 0; }
+  .theme-tickers { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+  .theme-ticker-chip { font-family: 'DM Mono', monospace; font-size: 9px; padding: 2px 7px; border-radius: 3px; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); }
+
+  /* Concentration / risk summary */
+  .risk-summary-card { background: rgba(245,158,11,0.05); border: 1px solid rgba(245,158,11,0.15); border-radius: 8px; padding: 14px 16px; }
+  .rsc-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(245,158,11,0.6); margin-bottom: 8px; }
+  .rsc-item { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .rsc-item:last-child { margin-bottom: 0; }
+  .rsc-bar-wrap { flex: 1; }
+  .rsc-bar-track { height: 3px; background: rgba(255,255,255,0.07); border-radius: 2px; }
+  .rsc-bar-fill-warn { height: 3px; background: #F59E0B; border-radius: 2px; }
+  .rsc-bar-fill-ok { height: 3px; background: #10B981; border-radius: 2px; }
+  .rsc-ticker { font-family: 'DM Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.5); min-width: 44px; }
+  .rsc-pct { font-family: 'DM Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.4); min-width: 32px; text-align: right; }
+
+  /* Leaderboard weekly recap */
+  .lb-week-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .lb-week-row:last-child { border-bottom: none; }
+  .lbw-rank { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; color: rgba(255,255,255,0.4); min-width: 28px; }
+  .lbw-rank.top { color: #3B82F6; }
+  .lbw-name { font-family: 'DM Sans', sans-serif; font-size: 13px; color: rgba(255,255,255,0.6); flex: 1; }
+  .lbw-name.you { color: #F1F5F9; font-weight: 500; }
+  .lbw-return { font-family: 'DM Mono', monospace; font-size: 13px; }
+  .lbw-you-badge { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 0.1em; padding: 2px 6px; border-radius: 3px; background: rgba(59,130,246,0.15); color: #60A5FA; border: 1px solid rgba(59,130,246,0.2); margin-left: 5px; }
+  .lbw-streak { font-family: 'DM Mono', monospace; font-size: 9px; color: rgba(245,158,11,0.7); }
+
+  /* Educational deep-dive */
+  .edu-deep { background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.13); border-radius: 8px; padding: 16px; }
+  .edu-deep-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(59,130,246,0.6); margin-bottom: 8px; }
+  .edu-deep-title { font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500; color: rgba(255,255,255,0.85); margin: 0 0 8px; }
+  .edu-deep-body { font-family: 'DM Sans', sans-serif; font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.7; margin: 0; }
+
+  /* CTA */
+  .cta-strip { padding: 20px 24px 24px; display: flex; gap: 10px; }
+  .cta-primary { display: inline-block; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; color: #060810; background: #3B82F6; text-decoration: none; padding: 11px 24px; border-radius: 7px; text-align: center; }
+  .cta-ghost { display: inline-block; font-family: 'DM Sans', sans-serif; font-size: 14px; color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.05); text-decoration: none; padding: 11px 20px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.09); text-align: center; }
+
+  /* Footer */
+  .footer-wrap { padding: 24px 0 0; text-align: center; }
+  .footer-link { font-family: 'DM Sans', sans-serif; font-size: 12px; color: rgba(255,255,255,0.18); text-decoration: none; margin: 0 8px; }
+  .footer-legal { font-family: 'DM Sans', sans-serif; font-size: 11px; color: rgba(255,255,255,0.13); line-height: 1.6; max-width: 420px; margin: 10px auto 0; }
+
+  @media screen and (max-width: 600px) {
+    .email-wrapper { padding: 14px 10px !important; }
+    .bw-grid { flex-direction: column !important; }
+    .sc-val { font-size: 18px !important; }
+    .cta-strip { flex-direction: column !important; }
+    .cta-primary, .cta-ghost { display: block !important; text-align: center !important; }
+    .scorecard-grid { flex-wrap: wrap !important; }
+    .sc-cell { min-width: 50% !important; margin-bottom: 12px !important; }
+    .sc-cell::after { display: none !important; }
+  }
+</style>
+</head>
+<body class="email-body">
+<div class="email-wrapper">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+    <tr>
+      <td>
+
+        <!-- HERO HEADER -->
+        <div class="weekly-hero">
+          <div class="hero-accent"></div>
+          <div class="logo-row">
+            <span class="logo-mono">TrendEdge&nbsp;AI</span>
+            <span class="week-badge">Week of {{week_label}}</span>
+          </div>
+          <p class="hero-title">Your weekly recap</p>
+          <p class="hero-sub">{{date_range}} &middot; {{trading_days}} trading days</p>
+          <hr class="hero-divider">
+        </div>
+
+        <!-- SCORECARD -->
+        <div class="scorecard">
+          <div class="scorecard-inner">
+            <div class="scorecard-grid">
+              <div class="sc-cell">
+                <div class="sc-val {{week_pct_class}}">{{week_pct_change}}</div>
+                <div class="sc-label">Weekly return</div>
+                <div class="sc-delta">vs {{benchmark_return}} S&P 500</div>
+              </div>
+              <div class="sc-cell">
+                <div class="sc-val neutral">{{portfolio_value}}</div>
+                <div class="sc-label">Portfolio value</div>
+                <div class="sc-delta">{{dollar_change}} this week</div>
+              </div>
+              <div class="sc-cell">
+                <div class="sc-val neutral">#{{leaderboard_rank}}</div>
+                <div class="sc-label">Leaderboard rank</div>
+                <div class="sc-delta">{{rank_change_label}}</div>
+              </div>
+              <div class="sc-cell">
+                <div class="sc-val {{alltime_class}}">{{alltime_return}}</div>
+                <div class="sc-label">All-time return</div>
+                <div class="sc-delta">since {{start_date}}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Day-by-day spark -->
+          <div class="sparkline-strip">
+            <div class="spark-label">Day-by-day portfolio performance</div>
+            <div class="spark-days">
+              {{#each spark_bars}}
+              <div class="spark-bar" style="height:{{height}}%;background:{{color}};"></div>
+              {{/each}}
+            </div>
+            <div class="spark-day-label">
+              <span class="spark-day-name">Mon</span>
+              <span class="spark-day-name">Tue</span>
+              <span class="spark-day-name">Wed</span>
+              <span class="spark-day-name">Thu</span>
+              <span class="spark-day-name">Fri</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- BODY -->
+        <div class="digest-body">
+
+          <!-- 1. Best and worst holdings -->
+          <div class="w-section">
+            <div class="w-section-header"><span class="w-section-label">Holdings performance</span></div>
+            <div class="w-section-content">
+              <div class="bw-grid">
+                <div class="bw-card">
+                  <div class="bw-card-label bw-best-label">Best performers</div>
+                  {{#each best_performers}}
+                  <div class="bw-item">
+                    <span class="bw-ticker">{{ticker}}</span>
+                    <span class="bw-pct up">{{pct}}</span>
+                  </div>
+                  {{/each}}
+                </div>
+                <div class="bw-card">
+                  <div class="bw-card-label bw-worst-label">Worst performers</div>
+                  {{#each worst_performers}}
+                  <div class="bw-item">
+                    <span class="bw-ticker">{{ticker}}</span>
+                    <span class="bw-pct down">{{pct}}</span>
+                  </div>
+                  {{/each}}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. News themes of the week -->
+          <div class="w-section">
+            <div class="w-section-header"><span class="w-section-label">Biggest news themes this week</span></div>
+            <div class="w-section-content">
+              {{#each news_themes}}
+              <div class="theme-item">
+                <span class="theme-num">{{number}}</span>
+                <div class="theme-body">
+                  <p class="theme-title">{{title}}</p>
+                  <p class="theme-desc">{{description}}</p>
+                  <div class="theme-tickers">
+                    {{#each affected_tickers}}
+                    <span class="theme-ticker-chip">{{this}}</span>
+                    {{/each}}
+                  </div>
+                </div>
+              </div>
+              {{/each}}
+            </div>
+          </div>
+
+          <!-- 3. Concentration / risk summary -->
+          <div class="w-section">
+            <div class="w-section-header"><span class="w-section-label">Concentration snapshot</span></div>
+            <div class="w-section-content">
+              <div class="risk-summary-card">
+                <div class="rsc-label">Top holdings by portfolio weight</div>
+                {{#each concentration_items}}
+                <div class="rsc-item">
+                  <span class="rsc-ticker">{{ticker}}</span>
+                  <div class="rsc-bar-wrap">
+                    <div class="rsc-bar-track">
+                      <div class="{{bar_class}}" style="width:{{weight}}%;"></div>
+                    </div>
+                  </div>
+                  <span class="rsc-pct">{{weight}}%</span>
+                </div>
+                {{/each}}
+                {{#if concentration_warning}}
+                <div style="margin-top:10px;font-family:'DM Sans',sans-serif;font-size:12px;color:rgba(245,158,11,0.75);line-height:1.55;">
+                  {{concentration_warning}}
+                </div>
+                {{/if}}
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Leaderboard recap -->
+          <div class="w-section">
+            <div class="w-section-header"><span class="w-section-label">Leaderboard weekly recap — {{leaderboard_name}}</span></div>
+            <div class="w-section-content">
+              {{#each leaderboard_rows}}
+              <div class="lb-week-row">
+                <span class="lbw-rank {{#if is_top}}top{{/if}}">{{rank}}</span>
+                <span class="lbw-name {{#if is_you}}you{{/if}}">
+                  {{display_name}}{{#if is_you}}<span class="lbw-you-badge">you</span>{{/if}}
+                </span>
+                <span class="lbw-return {{pct_class}}">{{weekly_return}}</span>
+                {{#if streak}}<span class="lbw-streak">{{streak}}</span>{{/if}}
+              </div>
+              {{/each}}
+            </div>
+          </div>
+
+          <!-- 5. Educational deep dive -->
+          <div class="w-section">
+            <div class="w-section-header"><span class="w-section-label">This week's insight</span></div>
+            <div class="w-section-content">
+              <div class="edu-deep">
+                <div class="edu-deep-label">{{edu_category}}</div>
+                <p class="edu-deep-title">{{edu_title}}</p>
+                <p class="edu-deep-body">{{edu_body}}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- CTA -->
+          <div class="cta-strip">
+            <a href="{{portfolio_url}}" class="cta-primary">View full weekly report &rarr;</a>
+            <a href="{{preferences_url}}" class="cta-ghost">Alert settings</a>
+          </div>
+
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer-wrap">
+          <div>
+            <a href="{{preferences_url}}" class="footer-link">Manage preferences</a>
+            <a href="{{unsubscribe_url}}" class="footer-link">Unsubscribe</a>
+            <a href="{{app_url}}" class="footer-link">Open app</a>
+          </div>
+          <p class="footer-legal">
+            Weekly digest for {{user_email}} &middot; Sent {{send_day}} morning<br>
+            TrendEdge AI &middot; Not financial advice &middot; Past performance does not guarantee future results.
+          </p>
+        </div>
+
+      </td>
+    </tr>
+  </table>
+</div>
+</body>
+</html>

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no">
+<title>TrendEdge AI · Daily Digest</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+  table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+  img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+  body { margin: 0; padding: 0; width: 100% !important; min-width: 100%; }
+
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  .email-body { background-color: #07090F; width: 100%; }
+  .email-wrapper { max-width: 600px; margin: 0 auto; padding: 28px 16px; }
+
+  /* Header */
+  .digest-header { background: #0E1422; border-radius: 12px 12px 0 0; border: 1px solid rgba(255,255,255,0.07); border-bottom: none; overflow: hidden; }
+  .header-top { padding: 20px 24px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: flex-start; justify-content: space-between; }
+  .logo-mono { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.14em; color: #3B82F6; text-transform: uppercase; }
+  .digest-date { font-family: 'DM Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.25); letter-spacing: 0.08em; text-align: right; margin-top: 2px; }
+  .digest-title { font-family: 'DM Sans', sans-serif; font-size: 22px; font-weight: 600; color: #F1F5F9; margin: 0; }
+  .digest-subtitle { font-family: 'DM Sans', sans-serif; font-size: 13px; color: rgba(255,255,255,0.4); margin: 4px 0 0; }
+
+  /* Portfolio summary bar */
+  .portfolio-bar { background: #111827; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 18px 24px; }
+  .portfolio-bar-grid { display: flex; gap: 0; }
+  .pbar-cell { flex: 1; text-align: center; position: relative; }
+  .pbar-cell::after { content: ''; position: absolute; right: 0; top: 8px; bottom: 8px; width: 1px; background: rgba(255,255,255,0.06); }
+  .pbar-cell:last-child::after { display: none; }
+  .pbar-val { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; }
+  .pbar-val.up { color: #10B981; }
+  .pbar-val.down { color: #F87171; }
+  .pbar-val.neutral { color: #F1F5F9; }
+  .pbar-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.28); margin-top: 5px; }
+
+  /* Sections */
+  .digest-body { background: #0E1422; border: 1px solid rgba(255,255,255,0.07); border-top: none; border-radius: 0 0 12px 12px; overflow: hidden; }
+  .digest-section { border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .digest-section:last-child { border-bottom: none; }
+  .section-header { padding: 14px 24px 0; }
+  .section-title-mono { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.28); }
+  .section-content { padding: 10px 24px 16px; }
+
+  /* Holdings table */
+  .holding-row { display: flex; align-items: center; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .holding-row:last-child { border-bottom: none; }
+  .holding-ticker { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: #E2E8F0; min-width: 56px; }
+  .holding-name { font-family: 'DM Sans', sans-serif; font-size: 12px; color: rgba(255,255,255,0.35); flex: 1; }
+  .holding-weight { font-family: 'DM Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.25); min-width: 40px; text-align: right; }
+  .holding-bar-wrap { flex: 1; margin: 0 12px; }
+  .holding-bar-track { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+  .holding-bar-up { height: 3px; background: #10B981; border-radius: 2px; }
+  .holding-bar-down { height: 3px; background: #F87171; border-radius: 2px; }
+  .holding-pct { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; min-width: 52px; text-align: right; }
+  .pct-up { color: #10B981; }
+  .pct-down { color: #F87171; }
+  .pct-flat { color: rgba(255,255,255,0.4); }
+
+  /* News items */
+  .news-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); align-items: flex-start; }
+  .news-item:last-child { border-bottom: none; }
+  .news-chip { font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 500; letter-spacing: 0.1em; padding: 2px 7px; border-radius: 3px; flex-shrink: 0; margin-top: 2px; }
+  .chip-earnings { background: rgba(139,92,246,0.15); color: #A78BFA; border: 1px solid rgba(139,92,246,0.2); }
+  .chip-analyst { background: rgba(59,130,246,0.12); color: #60A5FA; border: 1px solid rgba(59,130,246,0.2); }
+  .chip-news { background: rgba(107,114,128,0.15); color: #9CA3AF; border: 1px solid rgba(107,114,128,0.2); }
+  .chip-reddit { background: rgba(249,115,22,0.12); color: #FB923C; border: 1px solid rgba(249,115,22,0.2); }
+  .news-body { flex: 1; }
+  .news-headline { font-family: 'DM Sans', sans-serif; font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.5; margin: 0 0 3px; }
+  .news-meta { font-family: 'DM Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.25); }
+
+  /* Risk insight card */
+  .risk-card { background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.18); border-radius: 8px; padding: 14px 16px; margin-top: 4px; }
+  .risk-card-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(245,158,11,0.7); margin-bottom: 6px; }
+  .risk-card-text { font-family: 'DM Sans', sans-serif; font-size: 13px; color: rgba(255,255,255,0.65); line-height: 1.65; margin: 0; }
+
+  /* Watchlist */
+  .watchlist-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .watchlist-row:last-child { border-bottom: none; }
+  .wl-ticker { font-family: 'DM Mono', monospace; font-size: 12px; color: #E2E8F0; min-width: 52px; }
+  .wl-event { font-family: 'DM Sans', sans-serif; font-size: 12px; color: rgba(255,255,255,0.5); flex: 1; }
+  .wl-pct { font-family: 'DM Mono', monospace; font-size: 12px; }
+
+  /* Leaderboard */
+  .lb-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .lb-row:last-child { border-bottom: none; }
+  .lb-rank { font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 500; color: #3B82F6; min-width: 36px; }
+  .lb-name { font-family: 'DM Sans', sans-serif; font-size: 13px; color: rgba(255,255,255,0.7); flex: 1; }
+  .lb-name.you { color: #F1F5F9; font-weight: 500; }
+  .lb-return { font-family: 'DM Mono', monospace; font-size: 13px; }
+  .lb-badge { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 3px; }
+  .lb-you-badge { background: rgba(59,130,246,0.15); color: #60A5FA; border: 1px solid rgba(59,130,246,0.2); }
+  .lb-move-up { color: #10B981; font-size: 10px; }
+  .lb-move-down { color: #F87171; font-size: 10px; }
+
+  /* Educational insight */
+  .edu-card { background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.15); border-radius: 8px; padding: 14px 16px; margin-top: 4px; }
+  .edu-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(59,130,246,0.7); margin-bottom: 6px; }
+  .edu-text { font-family: 'DM Sans', sans-serif; font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.65; margin: 0; }
+
+  /* CTA strip */
+  .cta-strip { padding: 20px 24px; display: flex; gap: 10px; }
+  .cta-primary { display: inline-block; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; color: #07090F; background: #3B82F6; text-decoration: none; padding: 11px 24px; border-radius: 7px; text-align: center; }
+  .cta-ghost { display: inline-block; font-family: 'DM Sans', sans-serif; font-size: 14px; color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.05); text-decoration: none; padding: 11px 20px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.09); text-align: center; }
+
+  /* Footer */
+  .footer-wrap { padding: 24px 0 0; text-align: center; }
+  .footer-link { font-family: 'DM Sans', sans-serif; font-size: 12px; color: rgba(255,255,255,0.2); text-decoration: none; margin: 0 8px; }
+  .footer-legal { font-family: 'DM Sans', sans-serif; font-size: 11px; color: rgba(255,255,255,0.15); line-height: 1.6; max-width: 420px; margin: 10px auto 0; }
+
+  @media screen and (max-width: 600px) {
+    .email-wrapper { padding: 16px 10px !important; }
+    .pbar-val { font-size: 18px !important; }
+    .portfolio-bar-grid { gap: 4px !important; }
+    .cta-strip { flex-direction: column !important; }
+    .cta-primary, .cta-ghost { display: block !important; text-align: center !important; }
+    .header-top { flex-direction: column !important; gap: 6px !important; }
+    .digest-title { font-size: 18px !important; }
+  }
+</style>
+</head>
+<body class="email-body">
+<div class="email-wrapper">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+    <tr>
+      <td>
+
+        <!-- HEADER -->
+        <div class="digest-header">
+          <div class="header-top">
+            <div>
+              <div class="logo-mono">TrendEdge&nbsp;AI</div>
+              <p class="digest-title" style="margin-top:10px;">Your daily digest</p>
+              <p class="digest-subtitle">{{date_full}} &middot; After market close</p>
+            </div>
+            <div style="text-align:right;">
+              <div class="digest-date">{{date_short}}</div>
+              <div style="font-family:'DM Mono',monospace;font-size:9px;color:rgba(255,255,255,0.18);margin-top:4px;letter-spacing:0.08em;">DAILY DIGEST</div>
+            </div>
+          </div>
+
+          <!-- Portfolio summary bar -->
+          <div class="portfolio-bar">
+            <div class="portfolio-bar-grid">
+              <div class="pbar-cell">
+                <div class="pbar-val {{portfolio_day_class}}">{{portfolio_day_change}}</div>
+                <div class="pbar-label">Today's change</div>
+              </div>
+              <div class="pbar-cell">
+                <div class="pbar-val neutral">{{portfolio_total_value}}</div>
+                <div class="pbar-label">Portfolio value</div>
+              </div>
+              <div class="pbar-cell">
+                <div class="pbar-val {{portfolio_alltime_class}}">{{portfolio_alltime_return}}</div>
+                <div class="pbar-label">All-time return</div>
+              </div>
+              <div class="pbar-cell">
+                <div class="pbar-val neutral">#{{leaderboard_rank}}</div>
+                <div class="pbar-label">Your rank</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BODY -->
+        <div class="digest-body">
+
+          <!-- 1. Top movers in holdings -->
+          <div class="digest-section">
+            <div class="section-header"><div class="section-title-mono">Top movers in your holdings</div></div>
+            <div class="section-content">
+              {{#each top_movers}}
+              <div class="holding-row">
+                <span class="holding-ticker">{{ticker}}</span>
+                <span class="holding-name">{{name}}</span>
+                <div class="holding-bar-wrap">
+                  <div class="holding-bar-track">
+                    <div class="{{bar_class}}" style="width:{{bar_width}}%;"></div>
+                  </div>
+                </div>
+                <span class="holding-weight">{{weight}}%</span>
+                <span class="holding-pct {{pct_class}}">{{pct_change}}</span>
+              </div>
+              {{/each}}
+            </div>
+          </div>
+
+          <!-- 2. Key news -->
+          <div class="digest-section">
+            <div class="section-header"><div class="section-title-mono">Biggest news affecting your holdings</div></div>
+            <div class="section-content">
+              {{#each news_items}}
+              <div class="news-item">
+                <span class="news-chip chip-{{type}}">{{type_label}}</span>
+                <div class="news-body">
+                  <p class="news-headline">{{headline}}</p>
+                  <span class="news-meta">{{ticker}} &middot; {{source}} &middot; {{time_ago}}</span>
+                </div>
+              </div>
+              {{/each}}
+            </div>
+          </div>
+
+          <!-- 3. Watchlist -->
+          {{#if watchlist_items}}
+          <div class="digest-section">
+            <div class="section-header"><div class="section-title-mono">Watchlist activity</div></div>
+            <div class="section-content">
+              {{#each watchlist_items}}
+              <div class="watchlist-row">
+                <span class="wl-ticker">{{ticker}}</span>
+                <span class="wl-event">{{event}}</span>
+                <span class="wl-pct {{pct_class}}">{{pct_change}}</span>
+              </div>
+              {{/each}}
+            </div>
+          </div>
+          {{/if}}
+
+          <!-- 4. Risk to watch -->
+          <div class="digest-section">
+            <div class="section-header"><div class="section-title-mono">Risk to watch</div></div>
+            <div class="section-content">
+              <div class="risk-card">
+                <div class="risk-card-label">{{risk_title}}</div>
+                <p class="risk-card-text">{{risk_body}}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Leaderboard -->
+          <div class="digest-section">
+            <div class="section-header"><div class="section-title-mono">Leaderboard — {{leaderboard_name}}</div></div>
+            <div class="section-content">
+              {{#each leaderboard_rows}}
+              <div class="lb-row">
+                <span class="lb-rank">{{rank}}</span>
+                <span class="lb-name {{#if is_you}}you{{/if}}">{{display_name}} {{#if is_you}}<span class="lb-you-badge">you</span>{{/if}}</span>
+                <span class="lb-return {{pct_class}}">{{weekly_return}}</span>
+                <span class="{{move_class}}">{{move_label}}</span>
+              </div>
+              {{/each}}
+              <div style="margin-top:10px;font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,0.25);">
+                You moved <strong style="color:rgba(255,255,255,0.45);">{{rank_change_label}}</strong> today
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. Educational insight -->
+          <div class="digest-section">
+            <div class="section-header"><div class="section-title-mono">Insight of the day</div></div>
+            <div class="section-content">
+              <div class="edu-card">
+                <div class="edu-label">{{insight_category}}</div>
+                <p class="edu-text">{{insight_text}}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- CTA -->
+          <div class="cta-strip">
+            <a href="{{portfolio_url}}" class="cta-primary">Open full portfolio &rarr;</a>
+            <a href="{{preferences_url}}" class="cta-ghost">Alert settings</a>
+          </div>
+
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer-wrap">
+          <div>
+            <a href="{{preferences_url}}" class="footer-link">Manage preferences</a>
+            <a href="{{unsubscribe_url}}" class="footer-link">Unsubscribe</a>
+            <a href="{{app_url}}" class="footer-link">Open app</a>
+          </div>
+          <p class="footer-legal">
+            Daily digest for {{user_email}} &middot; Sent at {{send_time}} local time<br>
+            TrendEdge AI &middot; Not financial advice &middot; Past performance does not guarantee future results.
+          </p>
+        </div>
+
+      </td>
+    </tr>
+  </table>
+</div>
+</body>
+</html>

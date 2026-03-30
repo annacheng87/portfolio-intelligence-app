@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml">
+<head>
+<meta charset="utf-8">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no">
+<!--[if mso]>
+<noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+<![endif]-->
+<title>TrendEdge AI Alert</title>
+<style>
+  /* Base Reset */
+  *, *::before, *::after { box-sizing: border-box; }
+  body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+  table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+  img { border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
+  body { margin: 0; padding: 0; width: 100% !important; min-width: 100%; }
+
+  /* Fonts */
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  /* Layout */
+  .email-body { background-color: #0A0F1C; width: 100%; margin: 0; padding: 0; }
+  .email-wrapper { max-width: 580px; margin: 0 auto; padding: 32px 16px; }
+
+  /* Header */
+  .header-cell { padding: 0 0 28px 0; }
+  .logo-text { font-family: 'DM Mono', 'Courier New', monospace; font-size: 13px; font-weight: 500; letter-spacing: 0.12em; color: #3B82F6; text-transform: uppercase; text-decoration: none; }
+  .header-line { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 14px 0 0; }
+
+  /* Alert card */
+  .alert-card { background: #111827; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.07); }
+
+  /* Alert type band */
+  .alert-type-band { padding: 12px 24px; display: flex; align-items: center; gap: 10px; }
+  .alert-type-band.danger { background: linear-gradient(135deg, #1a0a0a 0%, #160606 100%); border-bottom: 1px solid rgba(239,68,68,0.25); }
+  .alert-type-band.warning { background: linear-gradient(135deg, #1a1200 0%, #120e00 100%); border-bottom: 1px solid rgba(245,158,11,0.25); }
+  .alert-type-band.positive { background: linear-gradient(135deg, #071a0e 0%, #051408 100%); border-bottom: 1px solid rgba(16,185,129,0.25); }
+  .alert-type-band.info { background: linear-gradient(135deg, #080f1a 0%, #060c17 100%); border-bottom: 1px solid rgba(59,130,246,0.25); }
+  .alert-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-danger { background: #EF4444; box-shadow: 0 0 6px rgba(239,68,68,0.7); }
+  .dot-warning { background: #F59E0B; box-shadow: 0 0 6px rgba(245,158,11,0.7); }
+  .dot-positive { background: #10B981; box-shadow: 0 0 6px rgba(16,185,129,0.7); }
+  .dot-info { background: #3B82F6; box-shadow: 0 0 6px rgba(59,130,246,0.7); }
+  .alert-type-label { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; }
+  .label-danger { color: #F87171; }
+  .label-warning { color: #FCD34D; }
+  .label-positive { color: #34D399; }
+  .label-info { color: #60A5FA; }
+  .alert-time { font-family: 'DM Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.3); margin-left: auto; }
+
+  /* Headline block */
+  .headline-block { padding: 24px 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .ticker-chip { display: inline-block; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; padding: 3px 10px; border-radius: 4px; margin-bottom: 12px; }
+  .chip-danger { background: rgba(239,68,68,0.12); color: #F87171; border: 1px solid rgba(239,68,68,0.2); }
+  .chip-warning { background: rgba(245,158,11,0.12); color: #FCD34D; border: 1px solid rgba(245,158,11,0.2); }
+  .chip-positive { background: rgba(16,185,129,0.12); color: #34D399; border: 1px solid rgba(16,185,129,0.2); }
+  .chip-info { background: rgba(59,130,246,0.12); color: #60A5FA; border: 1px solid rgba(59,130,246,0.2); }
+  .headline-main { font-family: 'DM Sans', -apple-system, sans-serif; font-size: 26px; font-weight: 600; line-height: 1.25; color: #F1F5F9; margin: 0 0 8px; }
+  .headline-sub { font-family: 'DM Sans', -apple-system, sans-serif; font-size: 14px; color: rgba(255,255,255,0.45); margin: 0; line-height: 1.5; }
+
+  /* Price row */
+  .price-row { padding: 18px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; gap: 0; }
+  .price-cell { flex: 1; }
+  .price-divider { width: 1px; background: rgba(255,255,255,0.06); margin: 0 20px; }
+  .price-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.3); margin-bottom: 5px; }
+  .price-value { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; color: #F1F5F9; }
+  .price-change-danger { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; color: #F87171; }
+  .price-change-positive { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; color: #34D399; }
+  .price-weight { font-family: 'DM Sans', sans-serif; font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 4px; }
+
+  /* Body sections */
+  .body-section { padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .body-section:last-of-type { border-bottom: none; }
+  .section-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.3); margin: 0 0 10px; }
+  .section-text { font-family: 'DM Sans', -apple-system, sans-serif; font-size: 14px; color: rgba(255,255,255,0.72); line-height: 1.7; margin: 0; }
+
+  /* Insight bullets */
+  .insight-item { display: flex; gap: 10px; margin-bottom: 9px; align-items: flex-start; }
+  .insight-item:last-child { margin-bottom: 0; }
+  .insight-bullet { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .bullet-blue { background: rgba(59,130,246,0.15); }
+  .bullet-dot-blue { width: 5px; height: 5px; border-radius: 50%; background: #3B82F6; }
+  .insight-text { font-family: 'DM Sans', sans-serif; font-size: 14px; color: rgba(255,255,255,0.65); line-height: 1.6; }
+
+  /* Risk pill */
+  .risk-row { display: flex; align-items: center; gap: 10px; }
+  .risk-badge { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; }
+  .risk-moderate { background: rgba(245,158,11,0.12); color: #FCD34D; border: 1px solid rgba(245,158,11,0.2); }
+  .risk-high { background: rgba(239,68,68,0.12); color: #F87171; border: 1px solid rgba(239,68,68,0.2); }
+  .risk-low { background: rgba(16,185,129,0.12); color: #34D399; border: 1px solid rgba(16,185,129,0.2); }
+  .risk-text { font-family: 'DM Sans', sans-serif; font-size: 13px; color: rgba(255,255,255,0.45); }
+
+  /* Consider list */
+  .consider-item { display: flex; gap: 10px; margin-bottom: 8px; align-items: flex-start; }
+  .consider-num { font-family: 'DM Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.25); flex-shrink: 0; padding-top: 2px; min-width: 16px; }
+  .consider-text { font-family: 'DM Sans', sans-serif; font-size: 14px; color: rgba(255,255,255,0.6); line-height: 1.6; }
+
+  /* CTA */
+  .cta-block { padding: 22px 24px 24px; display: flex; gap: 10px; }
+  .cta-primary { display: inline-block; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; color: #0A0F1C; background: #3B82F6; text-decoration: none; padding: 11px 22px; border-radius: 7px; text-align: center; }
+  .cta-secondary { display: inline-block; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.65); background: rgba(255,255,255,0.06); text-decoration: none; padding: 11px 22px; border-radius: 7px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+
+  /* Portfolio weight bar */
+  .weight-bar-wrap { margin-top: 12px; }
+  .weight-bar-track { height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+  .weight-bar-fill { height: 4px; border-radius: 2px; background: #F87171; }
+  .weight-bar-label { font-family: 'DM Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 5px; display: flex; justify-content: space-between; }
+
+  /* Footer */
+  .footer-cell { padding: 24px 0 0; text-align: center; }
+  .footer-links { margin-bottom: 10px; }
+  .footer-link { font-family: 'DM Sans', sans-serif; font-size: 12px; color: rgba(255,255,255,0.25); text-decoration: none; margin: 0 10px; }
+  .footer-link:hover { color: rgba(255,255,255,0.45); }
+  .footer-legal { font-family: 'DM Sans', sans-serif; font-size: 11px; color: rgba(255,255,255,0.18); line-height: 1.6; max-width: 420px; margin: 0 auto; }
+
+  /* Mobile */
+  @media screen and (max-width: 600px) {
+    .email-wrapper { padding: 20px 12px !important; }
+    .headline-main { font-size: 22px !important; }
+    .price-row { flex-direction: column !important; }
+    .price-divider { width: 100% !important; height: 1px !important; margin: 12px 0 !important; }
+    .cta-block { flex-direction: column !important; }
+    .cta-primary, .cta-secondary { display: block !important; text-align: center !important; }
+    .price-value, .price-change-danger, .price-change-positive { font-size: 18px !important; }
+  }
+</style>
+</head>
+<body class="email-body">
+<div class="email-wrapper">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+
+    <!-- HEADER -->
+    <tr>
+      <td class="header-cell">
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+          <tr>
+            <td><a href="{{app_url}}" class="logo-text">TrendEdge&nbsp;AI</a></td>
+            <td align="right" style="font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,0.2);letter-spacing:0.1em;text-transform:uppercase;">Smart&nbsp;Portfolio&nbsp;Alerts</td>
+          </tr>
+        </table>
+        <hr class="header-line">
+      </td>
+    </tr>
+
+    <!-- ALERT CARD -->
+    <tr>
+      <td>
+        <div class="alert-card">
+
+          <!-- Alert type band — swap class: danger / warning / positive / info -->
+          <div class="alert-type-band {{alert_band_class}}">
+            <div class="alert-dot dot-{{alert_color}}"></div>
+            <span class="alert-type-label label-{{alert_color}}">{{alert_type_label}}</span>
+            <span class="alert-time">{{alert_time}}</span>
+          </div>
+
+          <!-- Headline -->
+          <div class="headline-block">
+            <div>
+              <span class="ticker-chip chip-{{alert_color}}">{{ticker}}</span>
+              &nbsp;
+              <span style="font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,0.25);">{{exchange}} · {{sector}}</span>
+            </div>
+            <p class="headline-main">{{headline}}</p>
+            <p class="headline-sub">{{headline_sub}}</p>
+          </div>
+
+          <!-- Price row -->
+          <div style="padding:18px 24px;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+              <tr>
+                <td width="30%">
+                  <div class="price-label">Current price</div>
+                  <div class="price-value">${{current_price}}</div>
+                </td>
+                <td width="1" style="background:rgba(255,255,255,0.06);padding:0 20px;">
+                  <div style="width:1px;background:rgba(255,255,255,0.06);height:40px;"></div>
+                </td>
+                <td width="30%" style="padding-left:20px;">
+                  <div class="price-label">Today's move</div>
+                  <div class="price-change-{{alert_color}}">${{price_change}} ({{pct_change}}%)</div>
+                </td>
+                <td width="1" style="padding:0 20px;">
+                  <div style="width:1px;background:rgba(255,255,255,0.06);height:40px;"></div>
+                </td>
+                <td style="padding-left:20px;">
+                  <div class="price-label">Your position</div>
+                  <div class="price-value">{{portfolio_weight}}% of portfolio</div>
+                  <div class="price-weight">{{position_value}} held</div>
+                </td>
+              </tr>
+            </table>
+            <!-- Portfolio weight bar -->
+            <div class="weight-bar-wrap">
+              <div class="weight-bar-track">
+                <div class="weight-bar-fill" style="width:{{portfolio_weight}}%;background:{{bar_color}};"></div>
+              </div>
+              <div class="weight-bar-label">
+                <span>0%</span>
+                <span>Portfolio weight: {{portfolio_weight}}%</span>
+                <span>100%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Why it matters -->
+          <div class="body-section">
+            <p class="section-label">Why this matters</p>
+            <p class="section-text">{{why_it_matters}}</p>
+          </div>
+
+          <!-- What we're seeing -->
+          <div class="body-section">
+            <p class="section-label">What we're seeing</p>
+            {{#each insights}}
+            <div class="insight-item">
+              <div class="insight-bullet bullet-blue"><div class="bullet-dot-blue"></div></div>
+              <span class="insight-text">{{this}}</span>
+            </div>
+            {{/each}}
+          </div>
+
+          <!-- Risk level -->
+          <div class="body-section">
+            <p class="section-label">Risk level</p>
+            <div class="risk-row">
+              <span class="risk-badge risk-{{risk_level_class}}">{{risk_level_label}}</span>
+              <span class="risk-text">{{risk_description}}</span>
+            </div>
+          </div>
+
+          <!-- What you can consider -->
+          <div class="body-section">
+            <p class="section-label">What you can consider</p>
+            {{#each considerations}}
+            <div class="consider-item">
+              <span class="consider-num">{{@index_plus_1}}.</span>
+              <span class="consider-text">{{this}}</span>
+            </div>
+            {{/each}}
+          </div>
+
+          <!-- CTA -->
+          <div class="cta-block">
+            <a href="{{breakdown_url}}" class="cta-primary">View full breakdown &rarr;</a>
+            <a href="{{portfolio_url}}" class="cta-secondary">Open your portfolio</a>
+          </div>
+
+        </div>
+      </td>
+    </tr>
+
+    <!-- FOOTER -->
+    <tr>
+      <td class="footer-cell">
+        <div class="footer-links">
+          <a href="{{preferences_url}}" class="footer-link">Manage preferences</a>
+          <a href="{{unsubscribe_url}}" class="footer-link">Unsubscribe</a>
+          <a href="{{app_url}}" class="footer-link">Open app</a>
+        </div>
+        <p class="footer-legal">
+          You're receiving this because you enabled <strong style="color:rgba(255,255,255,0.3);">{{alert_type_label}}</strong> alerts for {{user_email}}.<br>
+          TrendEdge AI · Not financial advice · Past performance does not guarantee future results.
+        </p>
+      </td>
+    </tr>
+
+  </table>
+</div>
+</body>
+</html>
