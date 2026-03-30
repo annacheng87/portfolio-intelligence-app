@@ -8,6 +8,7 @@ export default function DashboardPage() {
   const [holdings, setHoldings] = useState([]);
   const [watchlist, setWatchlist] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [brokerStatus, setBrokerStatus] = useState(null);
   const [newTicker, setNewTicker] = useState('');
   const [activeTab, setActiveTab] = useState('holdings');
   const router = useRouter();
@@ -22,14 +23,16 @@ export default function DashboardPage() {
 
   async function fetchAll() {
     try {
-      const [h, w, a] = await Promise.all([
+      const [h, w, a, b] = await Promise.all([
         api.get('/portfolio/holdings'),
         api.get('/portfolio/watchlist'),
         api.get('/portfolio/alerts'),
+        api.get('/broker/status'),
       ]);
       setHoldings(h.data.holdings);
       setWatchlist(w.data.watchlist);
       setAlerts(a.data.alerts);
+      setBrokerStatus(b.data);
     } catch (err) {
       console.error('Failed to fetch data:', err);
     }
@@ -53,6 +56,25 @@ export default function DashboardPage() {
       fetchAll();
     } catch (err) {
       alert('Failed to remove ticker.');
+    }
+  }
+
+  async function connectBroker() {
+    try {
+      const res = await api.post('/broker/connect');
+      window.open(res.data.redirectUri, '_blank');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to initiate broker connection.');
+    }
+  }
+
+  async function syncHoldings() {
+    try {
+      const res = await api.post('/broker/sync');
+      alert(res.data.message);
+      fetchAll();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to sync holdings.');
     }
   }
 
@@ -100,8 +122,31 @@ export default function DashboardPage() {
 
         {activeTab === 'holdings' && (
           <div style={s.panel}>
+            <div style={s.brokerBar}>
+              {brokerStatus?.connected ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={s.brokerConnected}>✓ Broker connected</span>
+                  {brokerStatus.connections?.[0]?.lastSyncedAt && (
+                    <span style={{ fontSize: 12, color: '#888' }}>
+                      Last synced: {new Date(brokerStatus.connections[0].lastSyncedAt).toLocaleString()}
+                    </span>
+                  )}
+                  <button style={s.syncBtn} onClick={syncHoldings}>Sync now</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 13, color: '#888' }}>No broker connected</span>
+                  <button style={s.connectBtn} onClick={connectBroker}>Connect broker</button>
+                </div>
+              )}
+            </div>
+
             {holdings.length === 0 ? (
-              <div style={s.empty}>No holdings yet. Connect a broker account to see your positions here.</div>
+              <div style={s.empty}>
+                {brokerStatus?.connected
+                  ? 'No holdings found. Try syncing your account.'
+                  : 'Connect a broker account to see your positions here.'}
+              </div>
             ) : (
               <table style={s.table}>
                 <thead>
@@ -227,4 +272,8 @@ const s = {
   sourceRow: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 8, padding: '8px 10px', background: '#f9f9f8', borderRadius: 6 },
   sourceLabel: { fontSize: 11, color: '#888', fontWeight: 500 },
   sourceLink: { fontSize: 12, color: '#1a1a18', textDecoration: 'underline', cursor: 'pointer', lineHeight: 1.4 },
+  brokerBar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', marginBottom: 16, borderBottom: '1px solid #f0f0ef' },
+  brokerConnected: { fontSize: 13, color: '#2a7a4b', fontWeight: 500 },
+  connectBtn: { background: '#1a1a18', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' },
+  syncBtn: { background: 'none', color: '#1a1a18', border: '1px solid #ddd', borderRadius: 8, padding: '6px 14px', fontSize: 12, cursor: 'pointer' },
 };

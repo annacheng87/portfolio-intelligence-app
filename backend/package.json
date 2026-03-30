@@ -19,6 +19,7 @@
     "node-cron": "^4.2.1",
     "pg": "^8.20.0",
     "prisma": "^6.19.2",
+    "snaptrade-typescript-sdk": "^9.0.173",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
