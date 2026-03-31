@@ -23,4 +23,15 @@ api.interceptors.response.use(
   }
 );
 
+// Leaderboard
+export const getGlobalLeaderboard = () => api.get('/portfolio/leaderboard');
+export const toggleLeaderboardOptIn = (enabled) => api.patch('/portfolio/leaderboard-optin', { enabled });
+
+// Friends
+export const getMyInviteCode = () => api.get('/friends/code');
+export const redeemFriendCode = (code) => api.post('/friends/redeem', { code });
+export const getFriends = () => api.get('/friends');
+export const removeFriend = (friendId) => api.delete(`/friends/${friendId}`);
+export const getFriendsLeaderboard = () => api.get('/friends/leaderboard');
+
 export default api;

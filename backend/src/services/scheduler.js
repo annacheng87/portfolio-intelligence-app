@@ -1,17 +1,18 @@
 const cron = require('node-cron');
 const { Pool } = require('pg');
 const { evaluateWatchlists } = require('./alertEvaluator');
-const { sendDailyDigestEmail, sendWeeklyDigestEmail } = require('./emailService');  // ← NEW
+const { sendDailyDigestEmail, sendWeeklyDigestEmail } = require('./emailService');
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 
 // ─── Daily digest builder ─────────────────────────────────────────────────────
-// Runs at 6 PM ET Mon–Fri. Pulls today's alerts per user and sends one digest.
 
 async function runDailyDigests() {
   console.log('[scheduler] Running daily digests...');
   try {
-    // Get all users who have alerts today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -26,8 +27,6 @@ async function runDailyDigests() {
     console.log(`[scheduler] Sending daily digest to ${usersResult.rows.length} users`);
 
     for (const user of usersResult.rows) {
-
-      // Get today's alerts for this user
       const alertsResult = await pool.query(
         `SELECT * FROM "Alert"
          WHERE "userId" = $1 AND "triggeredAt" >= $2
@@ -36,16 +35,14 @@ async function runDailyDigests() {
       );
       const alerts = alertsResult.rows;
 
-      // Build top movers list from today's alerts
       const topMovers = alerts.map(a => ({
         ticker:    a.ticker,
-        name:      a.ticker,           // replace with company name lookup if you have it
-        weight:    0,                  // replace with portfolio weight if available
+        name:      a.ticker,
+        weight:    0,
         pctChange: extractPct(a.plainEnglishSummary),
         barWidth:  Math.min(Math.abs(parseFloat(extractPct(a.plainEnglishSummary)) || 0) * 10, 100),
       }));
 
-      // Build news items from alert data
       const newsItems = alerts
         .filter(a => a.newsHeadline)
         .map(a => ({
@@ -57,31 +54,28 @@ async function runDailyDigests() {
           timeAgo:   'Today',
         }));
 
-      // Risk note: pick the most severe alert of the day
       const worstAlert = alerts.find(a => a.alertType === 'price_down') || alerts[0];
       const riskTitle  = worstAlert ? `${worstAlert.ticker} — ${labelFromType(worstAlert.alertType)}` : 'No major risk flags today';
       const riskBody   = worstAlert?.riskNote || 'Your portfolio looks stable today.';
-
-      // Insight of the day — rotates based on day of week
-      const insight = getDailyInsight();
+      const insight    = getDailyInsight();
 
       try {
         await sendDailyDigestEmail(user.email, {
-          displayName:           user.displayName || user.email,
-          portfolioDayChange:    null,   // wire in from portfolio route when ready
-          portfolioTotalValue:   null,
+          displayName:            user.displayName || user.email,
+          portfolioDayChange:     null,
+          portfolioTotalValue:    null,
           portfolioAlltimeReturn: null,
-          leaderboardRank:       null,
+          leaderboardRank:        null,
           topMovers,
           newsItems,
-          watchlistItems:        [],
+          watchlistItems:         [],
           riskTitle,
           riskBody,
-          leaderboardName:       'Global',
-          leaderboardRows:       [],
-          rankChangeLabel:       'no change',
-          insightCategory:       insight.category,
-          insightText:           insight.text,
+          leaderboardName:        'Global',
+          leaderboardRows:        [],
+          rankChangeLabel:        'no change',
+          insightCategory:        insight.category,
+          insightText:            insight.text,
         });
       } catch (emailErr) {
         console.error(`[scheduler] Daily digest failed for ${user.email}:`, emailErr.message);
@@ -95,7 +89,6 @@ async function runDailyDigests() {
 }
 
 // ─── Weekly digest builder ────────────────────────────────────────────────────
-// Runs Saturday at 9 AM ET. Summarises the full week.
 
 async function runWeeklyDigests() {
   console.log('[scheduler] Running weekly digests...');
@@ -114,7 +107,6 @@ async function runWeeklyDigests() {
     console.log(`[scheduler] Sending weekly digest to ${usersResult.rows.length} users`);
 
     for (const user of usersResult.rows) {
-
       const alertsResult = await pool.query(
         `SELECT * FROM "Alert"
          WHERE "userId" = $1 AND "triggeredAt" >= $2
@@ -123,7 +115,6 @@ async function runWeeklyDigests() {
       );
       const alerts = alertsResult.rows;
 
-      // Best and worst tickers this week
       const tickerPcts = {};
       for (const a of alerts) {
         const pct = parseFloat(extractPct(a.plainEnglishSummary)) || 0;
@@ -131,53 +122,50 @@ async function runWeeklyDigests() {
           tickerPcts[a.ticker] = pct;
         }
       }
-      const sorted = Object.entries(tickerPcts).sort((a, b) => b[1] - a[1]);
+      const sorted          = Object.entries(tickerPcts).sort((a, b) => b[1] - a[1]);
       const bestPerformers  = sorted.filter(([, p]) => p > 0).slice(0, 3).map(([ticker, pct]) => ({ ticker, pct: `+${pct.toFixed(1)}%` }));
       const worstPerformers = sorted.filter(([, p]) => p < 0).reverse().slice(0, 3).map(([ticker, pct]) => ({ ticker, pct: `${pct.toFixed(1)}%` }));
 
-      // News themes: group by ticker
       const newsThemes = Object.keys(tickerPcts).slice(0, 3).map((ticker, i) => {
         const tickerAlerts = alerts.filter(a => a.ticker === ticker);
         return {
-          number:           String(i + 1).padStart(2, '0'),
-          title:            `Activity in ${ticker} this week`,
-          description:      tickerAlerts[0]?.plainEnglishSummary || '',
-          affectedTickers:  [ticker],
+          number:          String(i + 1).padStart(2, '0'),
+          title:           `Activity in ${ticker} this week`,
+          description:     tickerAlerts[0]?.plainEnglishSummary || '',
+          affectedTickers: [ticker],
         };
       });
 
-      // Week date range label
-      const now     = new Date();
-      const monday  = new Date(now); monday.setDate(now.getDate() - now.getDay() + 1);
-      const friday  = new Date(monday); friday.setDate(monday.getDate() + 4);
+      const now      = new Date();
+      const monday   = new Date(now); monday.setDate(now.getDate() - now.getDay() + 1);
+      const friday   = new Date(monday); friday.setDate(monday.getDate() + 4);
       const weekLabel = `${monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${friday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-
-      const edu = getWeeklyInsight();
+      const edu       = getWeeklyInsight();
 
       try {
         await sendWeeklyDigestEmail(user.email, {
           weekLabel,
-          dateRange:           weekLabel,
-          tradingDays:         5,
-          weekPctChange:       null,    // wire in from portfolio route when ready
-          portfolioValue:      null,
-          dollarChange:        null,
-          benchmarkReturn:     null,
-          leaderboardRank:     null,
-          rankChangeLabel:     'no change',
-          alltimeReturn:       null,
-          startDate:           null,
-          sparkBars:           buildSparkBars(alerts),
+          dateRange:            weekLabel,
+          tradingDays:          5,
+          weekPctChange:        null,
+          portfolioValue:       null,
+          dollarChange:         null,
+          benchmarkReturn:      null,
+          leaderboardRank:      null,
+          rankChangeLabel:      'no change',
+          alltimeReturn:        null,
+          startDate:            null,
+          sparkBars:            buildSparkBars(alerts),
           bestPerformers,
           worstPerformers,
           newsThemes,
-          concentrationItems:  [],
+          concentrationItems:   [],
           concentrationWarning: '',
-          leaderboardName:     'Global',
-          leaderboardRows:     [],
-          eduCategory:         edu.category,
-          eduTitle:            edu.title,
-          eduBody:             edu.body,
+          leaderboardName:      'Global',
+          leaderboardRows:      [],
+          eduCategory:          edu.category,
+          eduTitle:             edu.title,
+          eduBody:              edu.body,
         });
       } catch (emailErr) {
         console.error(`[scheduler] Weekly digest failed for ${user.email}:`, emailErr.message);
@@ -187,6 +175,25 @@ async function runWeeklyDigests() {
     console.log('[scheduler] Weekly digests complete.');
   } catch (err) {
     console.error('[scheduler] Weekly digest error:', err.message);
+  }
+}
+
+// ─── Alert cleanup ────────────────────────────────────────────────────────────
+
+async function runAlertCleanup() {
+  console.log('[scheduler] Running monthly alert cleanup...');
+  try {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 30);
+
+    const result = await pool.query(
+      `DELETE FROM "Alert" WHERE "triggeredAt" < $1`,
+      [cutoff]
+    );
+
+    console.log(`[scheduler] Deleted ${result.rowCount} alerts older than 30 days.`);
+  } catch (err) {
+    console.error('[scheduler] Alert cleanup error:', err.message);
   }
 }
 
@@ -210,7 +217,7 @@ function startScheduler() {
     }
   }, { timezone: 'America/New_York' });
 
-  // Daily digest — 6:00 PM ET Mon–Fri after market close
+  // Daily digest — 6:00 PM ET Mon–Fri
   cron.schedule('0 18 * * 1-5', async () => {
     console.log('[scheduler] 6 PM digest trigger at', new Date().toISOString());
     await runDailyDigests();
@@ -222,13 +229,19 @@ function startScheduler() {
     await runWeeklyDigests();
   }, { timezone: 'America/New_York' });
 
-  // Keep the process alive even outside market hours
+  // Alert cleanup — 2:00 AM ET on the 1st of every month
+  cron.schedule('0 2 1 * *', async () => {
+    console.log('[scheduler] Monthly cleanup trigger at', new Date().toISOString());
+    await runAlertCleanup();
+  }, { timezone: 'America/New_York' });
+
   setInterval(() => {}, 1 << 30);
 
   console.log('Scheduler running:');
   console.log('  — Alert checks:   every 15 min, 9 AM–4 PM ET Mon–Fri');
   console.log('  — Daily digest:   6:00 PM ET Mon–Fri');
   console.log('  — Weekly digest:  9:00 AM ET Saturday');
+  console.log('  — Alert cleanup:  2:00 AM ET on the 1st of every month');
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -247,7 +260,6 @@ function labelFromType(type) {
 }
 
 function buildSparkBars(alerts) {
-  // Returns 5 bars (Mon–Fri) based on alert activity this week
   const days = [0, 0, 0, 0, 0];
   for (const a of alerts) {
     const d = new Date(a.triggeredAt).getDay();
@@ -264,17 +276,17 @@ function buildSparkBars(alerts) {
 }
 
 const DAILY_INSIGHTS = [
-  { category: 'Risk management',   text: 'When a single stock exceeds 20% of your portfolio, a 10% drop moves your entire portfolio by 2%. This is concentration risk — and why diversification matters even if you\'re bullish on a name.' },
-  { category: 'Market basics',     text: 'Volume is how many shares traded in a day. High volume on a big price move means more conviction — institutions are involved. High volume on a flat day often means nothing.' },
+  { category: 'Risk management',    text: 'When a single stock exceeds 20% of your portfolio, a 10% drop moves your entire portfolio by 2%. This is concentration risk — and why diversification matters even if you\'re bullish on a name.' },
+  { category: 'Market basics',      text: 'Volume is how many shares traded in a day. High volume on a big price move means more conviction — institutions are involved. High volume on a flat day often means nothing.' },
   { category: 'Behavioural finance', text: 'Studies show investors feel losses about twice as strongly as equivalent gains. This is called loss aversion — and it\'s one reason people sell too early after a drop and hold too long after a gain.' },
-  { category: 'Portfolio basics',  text: 'Diversification doesn\'t mean owning many stocks. If all your stocks move together in the same direction, you\'re not diversified. True diversification means owning things that don\'t all fall at the same time.' },
+  { category: 'Portfolio basics',   text: 'Diversification doesn\'t mean owning many stocks. If all your stocks move together in the same direction, you\'re not diversified. True diversification means owning things that don\'t all fall at the same time.' },
   { category: 'Reading the market', text: 'The S&P 500 is an index of 500 large US companies. When people say "the market is up today", they usually mean the S&P 500 is up. It\'s the most common benchmark to compare your portfolio against.' },
 ];
 
 const WEEKLY_INSIGHTS = [
-  { category: 'Portfolio basics',  title: 'What does it mean to outperform the market?', body: 'Outperforming the S&P 500 means your portfolio grew faster than the index over the same period. Most professional fund managers don\'t beat it consistently — so if you do, even briefly, that\'s meaningful.' },
-  { category: 'Risk management',   title: 'Why drawdowns matter more than gains', body: 'A 50% loss requires a 100% gain just to break even. This asymmetry is why protecting your downside is more important than chasing upside. Slow and steady portfolios often win long-term.' },
-  { category: 'Market basics',     title: 'What earnings season means for your portfolio', body: 'Four times a year, public companies report their financials. These reports often cause big price swings — even if the numbers look fine, the market reacts to whether results beat or missed expectations.' },
+  { category: 'Portfolio basics', title: 'What does it mean to outperform the market?', body: 'Outperforming the S&P 500 means your portfolio grew faster than the index over the same period. Most professional fund managers don\'t beat it consistently — so if you do, even briefly, that\'s meaningful.' },
+  { category: 'Risk management',  title: 'Why drawdowns matter more than gains',        body: 'A 50% loss requires a 100% gain just to break even. This asymmetry is why protecting your downside is more important than chasing upside. Slow and steady portfolios often win long-term.' },
+  { category: 'Market basics',    title: 'What earnings season means for your portfolio', body: 'Four times a year, public companies report their financials. These reports often cause big price swings — even if the numbers look fine, the market reacts to whether results beat or missed expectations.' },
 ];
 
 function getDailyInsight() {

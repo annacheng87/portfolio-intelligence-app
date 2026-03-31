@@ -5,7 +5,10 @@ const { getTickerSentiment, sentimentToEnglish } = require('./newsSentiment');
 const { getTickerRedditSentiment, redditSentimentToEnglish } = require('./redditSentiment');
 const { sendRealtimeAlertEmail } = require('./emailService');
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 
 const PRICE_MOVE_THRESHOLD   = 0.05;
 const VOLUME_SPIKE_THRESHOLD = 2.0;

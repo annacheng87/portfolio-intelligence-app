@@ -30,11 +30,8 @@ router.get('/holdings', requireAuth, async (req, res) => {
 // ─── Performance ──────────────────────────────────────────────────────────────
 
 // GET /api/portfolio/performance
-// Returns holdings enriched with live prices, values, returns, and portfolio weights.
-// Also returns portfolio-level totals: total value, total cost, total return, daily P&L.
 router.get('/performance', requireAuth, async (req, res) => {
   try {
-    // 1. Fetch holdings from DB
     const holdingsResult = await pool.query(
       `SELECT h.* FROM "Holding" h
        JOIN "BrokerConnection" bc ON h."brokerConnectionId" = bc.id
@@ -47,30 +44,26 @@ router.get('/performance', requireAuth, async (req, res) => {
       return res.json({
         holdings: [],
         summary: {
-          totalValue:       0,
-          totalCost:        0,
-          totalReturn:      0,
-          totalReturnPct:   0,
-          dailyPnL:         0,
-          dailyPnLPct:      0,
+          totalValue:     0,
+          totalCost:      0,
+          totalReturn:    0,
+          totalReturnPct: 0,
+          dailyPnL:       0,
+          dailyPnLPct:    0,
         },
       });
     }
 
-    // 2. Fetch live prices for all tickers in parallel
-    // Polygon free tier: use prev close as "current" price
     const tickers = [...new Set(holdings.map(h => h.ticker))];
     const priceResults = await Promise.all(
       tickers.map(ticker => getPreviousClose(ticker))
     );
 
-    // Build a price map: { AAPL: { close, open, ... } }
     const priceMap = {};
     for (const p of priceResults) {
       if (p) priceMap[p.ticker] = p;
     }
 
-    // 3. Enrich each holding with price data
     let totalValue    = 0;
     let totalCost     = 0;
     let totalDailyPnL = 0;
@@ -80,22 +73,21 @@ router.get('/performance', requireAuth, async (req, res) => {
       const avgCost  = parseFloat(h.avgCostBasis);
       const price    = priceMap[h.ticker];
 
-      const currentPrice  = price?.close  ?? null;
-      const openPrice     = price?.open   ?? null;
+      const currentPrice = price?.close ?? null;
+      const openPrice    = price?.open  ?? null;
 
-      // Position value
       const positionValue = currentPrice !== null ? qty * currentPrice : null;
       const positionCost  = qty * avgCost;
 
-      // Return vs cost basis
-      const gainLoss      = positionValue !== null ? positionValue - positionCost : null;
-      const gainLossPct   = positionValue !== null ? ((positionValue - positionCost) / positionCost) * 100 : null;
+      const gainLoss    = positionValue !== null ? positionValue - positionCost : null;
+      const gainLossPct = positionValue !== null
+        ? ((positionValue - positionCost) / positionCost) * 100
+        : null;
 
-      // Daily P&L (today's open vs close)
-      const dailyPnL      = (currentPrice !== null && openPrice !== null)
+      const dailyPnL = (currentPrice !== null && openPrice !== null)
         ? qty * (currentPrice - openPrice)
         : null;
-      const dailyPct      = (currentPrice !== null && openPrice !== null)
+      const dailyPct = (currentPrice !== null && openPrice !== null)
         ? ((currentPrice - openPrice) / openPrice) * 100
         : null;
 
@@ -115,18 +107,16 @@ router.get('/performance', requireAuth, async (req, res) => {
         gainLossPct,
         dailyPnL,
         dailyPct,
-        portfolioWeight: null, // filled in after totals
+        portfolioWeight: null,
       };
     });
 
-    // 4. Calculate portfolio weights now that we have totalValue
     for (const h of enriched) {
       h.portfolioWeight = (h.positionValue !== null && totalValue > 0)
         ? (h.positionValue / totalValue) * 100
         : null;
     }
 
-    // Sort by portfolio weight descending
     enriched.sort((a, b) => (b.portfolioWeight ?? 0) - (a.portfolioWeight ?? 0));
 
     const totalReturn    = totalValue - totalCost;
@@ -135,7 +125,6 @@ router.get('/performance', requireAuth, async (req, res) => {
       ? (totalDailyPnL / (totalValue - totalDailyPnL)) * 100
       : 0;
 
-    // 5. Save a portfolio snapshot so the scheduler can use it for digests
     try {
       await pool.query(
         `INSERT INTO "PortfolioSnapshot" (id, "userId", "totalValue", "dailyPctChange")
@@ -143,7 +132,6 @@ router.get('/performance', requireAuth, async (req, res) => {
         [uuidv4(), req.userId, totalValue.toFixed(2), dailyPnLPct.toFixed(4)]
       );
     } catch (snapErr) {
-      // Non-fatal — don't fail the request if snapshot save fails
       console.error('Snapshot save error:', snapErr.message);
     }
 
@@ -307,6 +295,70 @@ router.put('/alert-preferences', requireAuth, async (req, res) => {
     await pool.query('ROLLBACK');
     console.error('SAVE PREFS ERROR:', err);
     res.status(500).json({ error: 'Could not save alert preferences.' });
+  }
+});
+
+// ─── Leaderboard ──────────────────────────────────────────────────────────────
+
+// GET /api/portfolio/leaderboard — global leaderboard
+router.get('/leaderboard', requireAuth, async (req, res) => {
+  try {
+    // Get all opted-in users
+    const usersResult = await pool.query(
+      `SELECT id, "displayName" FROM "User" WHERE "leaderboardOptIn" = true`
+    );
+    const users = usersResult.rows;
+
+    if (users.length === 0) return res.json([]);
+
+    // Get latest snapshot for each user
+    const snapshots = await Promise.all(
+      users.map(u =>
+        pool.query(
+          `SELECT "dailyPctChange" FROM "PortfolioSnapshot"
+           WHERE "userId" = $1
+           ORDER BY "snapshotAt" DESC
+           LIMIT 1`,
+          [u.id]
+        )
+      )
+    );
+
+    const entries = users
+      .map((u, i) => ({
+        userId:         u.id,
+        displayName:    u.displayName || `Trader #${u.id.slice(-4)}`,
+        dailyPctChange: snapshots[i].rows[0]
+          ? parseFloat(snapshots[i].rows[0].dailyPctChange)
+          : null,
+        isYou: u.id === req.userId,
+      }))
+      .filter(e => e.dailyPctChange !== null)
+      .sort((a, b) => b.dailyPctChange - a.dailyPctChange)
+      .map((e, i) => ({ ...e, rank: i + 1 }));
+
+    res.json(entries);
+  } catch (err) {
+    console.error('LEADERBOARD ERROR:', err);
+    res.status(500).json({ error: 'Failed to fetch leaderboard.' });
+  }
+});
+
+// PATCH /api/portfolio/leaderboard-optin
+router.patch('/leaderboard-optin', requireAuth, async (req, res) => {
+  const { enabled } = req.body;
+  if (typeof enabled !== 'boolean') {
+    return res.status(400).json({ error: 'enabled (boolean) is required.' });
+  }
+  try {
+    await pool.query(
+      `UPDATE "User" SET "leaderboardOptIn" = $1 WHERE id = $2`,
+      [enabled, req.userId]
+    );
+    res.json({ leaderboardOptIn: enabled });
+  } catch (err) {
+    console.error('OPT-IN ERROR:', err);
+    res.status(500).json({ error: 'Failed to update leaderboard opt-in.' });
   }
 });
 

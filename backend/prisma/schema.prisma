@@ -22,6 +22,10 @@ model User {
   alerts             Alert[]
   portfolioSnapshots PortfolioSnapshot[]
   alertPreferences   AlertPreference[]
+
+  friendCode   FriendCode?
+  friendships  Friendship[] @relation("UserFriends")
+  friendOf     Friendship[] @relation("FriendOf")
 }
 
 model BrokerConnection {
@@ -124,4 +128,23 @@ model PortfolioSnapshot {
   snapshotAt     DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
+}
+
+model FriendCode {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  code      String   @unique
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Friendship {
+  id        String   @id @default(cuid())
+  userId    String
+  friendId  String
+  createdAt DateTime @default(now())
+  user      User     @relation("UserFriends", fields: [userId], references: [id])
+  friend    User     @relation("FriendOf", fields: [friendId], references: [id])
+
+  @@unique([userId, friendId])
 }

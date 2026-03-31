@@ -1,7 +1,15 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import api from '../../lib/api';
+import api, {
+  getGlobalLeaderboard,
+  toggleLeaderboardOptIn,
+  getMyInviteCode,
+  redeemFriendCode,
+  getFriends,
+  removeFriend,
+  getFriendsLeaderboard,
+} from '../../lib/api';
 
 const ALERT_CATEGORIES = [
   { group: 'Real-time alerts', items: [
@@ -38,45 +46,276 @@ function fmtDollar(n) { if (n===null||n===undefined) return '—'; const abs=Mat
 function fmtPct(n) { if (n===null||n===undefined) return '—'; const sign=parseFloat(n)>=0?'+':''; return `${sign}${parseFloat(n).toFixed(2)}%`; }
 function pctColor(n) { if (n===null||n===undefined) return '#888'; return parseFloat(n)>=0?'#2a7a4b':'#c0392b'; }
 
-const ORDER_TYPES  = ['Market','Limit','Stop'];
+const ORDER_TYPES   = ['Market','Limit','Stop'];
 const TIME_IN_FORCE = ['Day','GTC'];
 
+// ─── Leaderboard Tab ──────────────────────────────────────────────────────────
+function LeaderboardTab() {
+  const [view, setView]             = useState('global');
+  const [globalData, setGlobalData] = useState([]);
+  const [friendsData, setFriendsData] = useState([]);
+  const [optedIn, setOptedIn]       = useState(false);
+  const [loading, setLoading]       = useState(true);
+
+  useEffect(() => { loadAll(); }, []);
+
+  async function loadAll() {
+    setLoading(true);
+    try {
+      const [g, f, me] = await Promise.all([
+        getGlobalLeaderboard(),
+        getFriendsLeaderboard(),
+        api.get('/auth/me'),
+      ]);
+      setGlobalData(g.data);
+      setFriendsData(f.data);
+      setOptedIn(me.data.user?.leaderboardOptIn ?? false);
+    } catch (e) { console.error('Leaderboard load error:', e); }
+    finally { setLoading(false); }
+  }
+
+  async function handleToggleOptIn() {
+    const next = !optedIn;
+    setOptedIn(next);
+    try {
+      await toggleLeaderboardOptIn(next);
+      loadAll();
+    } catch (e) { setOptedIn(!next); }
+  }
+
+  const rows    = view === 'global' ? globalData : friendsData;
+  const myEntry = rows.find(r => r.isYou);
+
+  return (
+    <div style={s.panel}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:12}}>
+        <div style={{display:'flex',gap:8}}>
+          {['global','friends'].map(v => (
+            <button key={v} onClick={() => setView(v)}
+              style={{...s.subTabBtn,...(view===v?s.subTabActive:{})}}>
+              {v==='global'?'🌐 Global':'👥 Friends'}
+            </button>
+          ))}
+        </div>
+        <label style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer',userSelect:'none'}}>
+          <span style={{fontSize:13,color:'#666'}}>Show my performance</span>
+          <div onClick={handleToggleOptIn}
+            style={{width:36,height:20,borderRadius:10,background:optedIn?'#1a1a18':'#ddd',position:'relative',cursor:'pointer',transition:'background 0.2s'}}>
+            <div style={{position:'absolute',top:3,left:optedIn?18:2,width:14,height:14,borderRadius:7,background:'#fff',transition:'left 0.2s'}}/>
+          </div>
+        </label>
+      </div>
+
+      {myEntry && (
+        <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+          <span style={{fontSize:13,fontWeight:500,color:'#166534'}}>
+            Your rank ({view==='global'?'Global':'Friends'}): #{myEntry.rank}
+          </span>
+          <span style={{fontSize:13,fontWeight:700,color:pctColor(myEntry.dailyPctChange)}}>
+            {fmtPct(myEntry.dailyPctChange)} today
+          </span>
+        </div>
+      )}
+
+      {loading ? (
+        <div style={s.empty}>Loading...</div>
+      ) : rows.length===0 ? (
+        <div style={s.empty}>
+          {view==='friends'
+            ? 'No opted-in friends yet — share your invite code in the Friends tab.'
+            : 'No leaderboard data yet. Enable "Show my performance" to appear.'}
+        </div>
+      ) : (
+        <table style={s.table}>
+          <thead>
+            <tr>
+              <th style={s.th}>Rank</th>
+              <th style={s.th}>Trader</th>
+              <th style={{...s.th,textAlign:'right'}}>Daily Return</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => (
+              <tr key={row.userId} style={{background:row.isYou?'#f0fdf4':'transparent'}}>
+                <td style={s.td}>{row.rank===1?'🥇':row.rank===2?'🥈':row.rank===3?'🥉':`#${row.rank}`}</td>
+                <td style={s.td}>
+                  <span style={{fontWeight:row.isYou?600:400}}>{row.displayName}</span>
+                  {row.isYou && <span style={{marginLeft:8,fontSize:11,color:'#2a7a4b',fontWeight:400}}>you</span>}
+                </td>
+                <td style={{...s.td,textAlign:'right',color:pctColor(row.dailyPctChange),fontWeight:500}}>
+                  {fmtPct(row.dailyPctChange)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+// ─── Friends Tab ──────────────────────────────────────────────────────────────
+function FriendsTab() {
+  const [myCode, setMyCode]           = useState('');
+  const [redeemInput, setRedeemInput] = useState('');
+  const [redeemMsg, setRedeemMsg]     = useState(null);
+  const [friends, setFriends]         = useState([]);
+  const [copied, setCopied]           = useState(false);
+  const [loading, setLoading]         = useState(true);
+
+  useEffect(() => { loadAll(); }, []);
+
+  async function loadAll() {
+    setLoading(true);
+    try {
+      const [codeRes, friendsRes] = await Promise.all([getMyInviteCode(), getFriends()]);
+      setMyCode(codeRes.data.code);
+      setFriends(friendsRes.data);
+    } catch (e) { console.error('Friends load error:', e); }
+    finally { setLoading(false); }
+  }
+
+  function copyCode() {
+    navigator.clipboard.writeText(myCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleRedeem() {
+    if (!redeemInput.trim()) return;
+    try {
+      const res = await redeemFriendCode(redeemInput.trim());
+      setRedeemMsg({ text: `✅ Added ${res.data.friend.displayName}!`, ok: true });
+      setRedeemInput('');
+      loadAll();
+    } catch (e) {
+      setRedeemMsg({ text: `❌ ${e.response?.data?.error || 'Something went wrong'}`, ok: false });
+    }
+    setTimeout(() => setRedeemMsg(null), 3000);
+  }
+
+  async function handleRemove(friendId, name) {
+    if (!confirm(`Remove ${name} from friends?`)) return;
+    try {
+      await removeFriend(friendId);
+      setFriends(prev => prev.filter(f => f.id !== friendId));
+    } catch { alert('Failed to remove friend.'); }
+  }
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:16,maxWidth:520}}>
+      <div style={s.panel}>
+        <div style={{fontSize:14,fontWeight:500,marginBottom:4}}>Your invite code</div>
+        <div style={{fontSize:13,color:'#888',marginBottom:14}}>Share this with friends so they can add you.</div>
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <span style={{fontSize:24,fontWeight:700,letterSpacing:'0.15em',color:'#1a1a18',background:'#f0f0ef',padding:'10px 18px',borderRadius:8,fontFamily:'monospace'}}>
+            {myCode || '—'}
+          </span>
+          <button style={s.syncBtn} onClick={copyCode}>{copied?'✅ Copied':'Copy'}</button>
+        </div>
+      </div>
+
+      <div style={s.panel}>
+        <div style={{fontSize:14,fontWeight:500,marginBottom:4}}>Add a friend</div>
+        <div style={{fontSize:13,color:'#888',marginBottom:14}}>Enter a friend's invite code to connect.</div>
+        <div style={{display:'flex',gap:8}}>
+          <input
+            style={{...s.input,flex:1,fontFamily:'monospace',letterSpacing:'0.1em',textTransform:'uppercase'}}
+            value={redeemInput}
+            onChange={e => setRedeemInput(e.target.value.toUpperCase())}
+            placeholder="e.g. A1B2C3D4"
+            maxLength={8}
+          />
+          <button style={s.primaryBtn} onClick={handleRedeem}>Add</button>
+        </div>
+        {redeemMsg && (
+          <div style={{marginTop:10,fontSize:13,color:redeemMsg.ok?'#2a7a4b':'#c0392b'}}>
+            {redeemMsg.text}
+          </div>
+        )}
+      </div>
+
+      <div style={s.panel}>
+        <div style={{fontSize:14,fontWeight:500,marginBottom:16}}>
+          Friends {!loading && `(${friends.length})`}
+        </div>
+        {loading ? (
+          <div style={s.empty}>Loading...</div>
+        ) : friends.length===0 ? (
+          <div style={s.empty}>No friends yet. Share your code above!</div>
+        ) : (
+          <div>
+            {friends.map(f => (
+              <div key={f.id} style={{...s.listRow,alignItems:'center'}}>
+                <div>
+                  <div style={{fontSize:14,fontWeight:500}}>{f.displayName||'Anonymous'}</div>
+                  <div style={{fontSize:12,color:'#aaa',marginTop:2}}>
+                    {f.leaderboardOptIn?'📊 On leaderboard':'🔒 Private'}
+                  </div>
+                </div>
+                <button style={s.removeBtn} onClick={() => handleRemove(f.id, f.displayName)}>Remove</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const [user, setUser]               = useState(null);
-  const [holdings, setHoldings]       = useState([]);
-  const [performance, setPerformance] = useState(null);
-  const [perfLoading, setPerfLoading] = useState(false);
-  const [watchlist, setWatchlist]     = useState([]);
-  const [alerts, setAlerts]           = useState([]);
-  const [brokerStatus, setBrokerStatus] = useState(null);
-  const [newTicker, setNewTicker]     = useState('');
-  const [activeTab, setActiveTab]     = useState('holdings');
-  const [prefs, setPrefs]             = useState({});
-  const [prefsSaving, setPrefsSaving] = useState(false);
-  const [prefsSaved, setPrefsSaved]   = useState(false);
+  const [user, setUser]                       = useState(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [holdings, setHoldings]               = useState([]);
+  const [performance, setPerformance]         = useState(null);
+  const [perfLoading, setPerfLoading]         = useState(false);
+  const [watchlist, setWatchlist]             = useState([]);
+  const [alerts, setAlerts]                   = useState([]);
+  const [brokerStatus, setBrokerStatus]       = useState(null);
+  const [newTicker, setNewTicker]             = useState('');
+  const [activeTab, setActiveTab]             = useState('holdings');
+  const [prefs, setPrefs]                     = useState({});
+  const [prefsSaving, setPrefsSaving]         = useState(false);
+  const [prefsSaved, setPrefsSaved]           = useState(false);
 
   // Trading state
-  const [tradeAccounts, setTradeAccounts]     = useState([]);
+  const [tradeAccounts, setTradeAccounts]               = useState([]);
   const [tradeAccountsLoading, setTradeAccountsLoading] = useState(false);
-  const [orderTicket, setOrderTicket]         = useState(null); // { ticker, action }
-  const [orderAccount, setOrderAccount]       = useState('');
-  const [orderType, setOrderType]             = useState('Market');
-  const [orderUnits, setOrderUnits]           = useState('');
-  const [orderPrice, setOrderPrice]           = useState('');
-  const [orderStopPrice, setOrderStopPrice]   = useState('');
-  const [orderTIF, setOrderTIF]               = useState('Day');
-  const [orderLoading, setOrderLoading]       = useState(false);
-  const [orderResult, setOrderResult]         = useState(null);
-  const [orderError, setOrderError]           = useState(null);
-  const [orderHistory, setOrderHistory]       = useState([]);
+  const [orderTicket, setOrderTicket]                   = useState(null);
+  const [orderAccount, setOrderAccount]                 = useState('');
+  const [orderType, setOrderType]                       = useState('Market');
+  const [orderUnits, setOrderUnits]                     = useState('');
+  const [orderPrice, setOrderPrice]                     = useState('');
+  const [orderStopPrice, setOrderStopPrice]             = useState('');
+  const [orderTIF, setOrderTIF]                         = useState('Day');
+  const [orderLoading, setOrderLoading]                 = useState(false);
+  const [orderResult, setOrderResult]                   = useState(null);
+  const [orderError, setOrderError]                     = useState(null);
+  const [orderHistory, setOrderHistory]                 = useState([]);
 
   const router = useRouter();
 
+  // ── UPDATED useEffect — handles Google OAuth redirect ──
   useEffect(() => {
+    // Check for Google OAuth token in URL params
+    const params      = new URLSearchParams(window.location.search);
+    const googleToken = params.get('token');
+    const googleUser  = params.get('user');
+
+    if (googleToken && googleUser) {
+      localStorage.setItem('token', googleToken);
+      localStorage.setItem('user', googleUser);
+      // Clean the URL so params don't persist on refresh
+      window.history.replaceState({}, '', '/dashboard');
+    }
+
     const token = localStorage.getItem('token');
     if (!token) { router.push('/login'); return; }
+
     const cached = localStorage.getItem('user');
     if (cached) setUser(JSON.parse(cached));
+
     fetchAll();
   }, []);
 
@@ -127,36 +366,20 @@ export default function DashboardPage() {
     } catch (err) { console.error('Failed to fetch orders:', err); }
   }
 
-  useEffect(() => { if (activeTab === 'performance' && !performance) fetchPerformance(); }, [activeTab]);
-  useEffect(() => {
-    if (activeTab === 'trade') {
-      fetchTradeAccounts();
-    }
-  }, [activeTab]);
+  useEffect(() => { if (activeTab==='performance' && !performance) fetchPerformance(); }, [activeTab]);
+  useEffect(() => { if (activeTab==='trade') fetchTradeAccounts(); }, [activeTab]);
   useEffect(() => { if (orderAccount) fetchOrderHistory(orderAccount); }, [orderAccount]);
 
   function openOrderTicket(ticker, action) {
     setOrderTicket({ ticker, action });
-    setOrderType('Market');
-    setOrderUnits('');
-    setOrderPrice('');
-    setOrderStopPrice('');
-    setOrderTIF('Day');
-    setOrderResult(null);
-    setOrderError(null);
-  }
-
-  function closeOrderTicket() {
-    setOrderTicket(null);
-    setOrderResult(null);
-    setOrderError(null);
+    setOrderType('Market'); setOrderUnits(''); setOrderPrice('');
+    setOrderStopPrice(''); setOrderTIF('Day');
+    setOrderResult(null); setOrderError(null);
   }
 
   async function submitOrder() {
     if (!orderTicket) return;
-    setOrderLoading(true);
-    setOrderError(null);
-    setOrderResult(null);
+    setOrderLoading(true); setOrderError(null); setOrderResult(null);
     try {
       const res = await api.post('/trading/order', {
         accountId:   orderAccount,
@@ -170,16 +393,15 @@ export default function DashboardPage() {
       });
       setOrderResult(res.data);
       fetchOrderHistory(orderAccount);
-      if (activeTab === 'performance') fetchPerformance();
-    } catch (err) {
-      setOrderError(err.response?.data?.error || 'Failed to place order.');
-    } finally { setOrderLoading(false); }
+      if (activeTab==='performance') fetchPerformance();
+    } catch (err) { setOrderError(err.response?.data?.error || 'Failed to place order.'); }
+    finally { setOrderLoading(false); }
   }
 
-  function isPrefEnabled(key) { return prefs[key]?.enabled ?? true; }
+  function isPrefEnabled(key)         { return prefs[key]?.enabled ?? true; }
   function getPrefThreshold(key, def) { return prefs[key]?.threshold ?? def; }
-  function togglePref(key) { setPrefs(p => ({...p,[key]:{...p[key],enabled:!isPrefEnabled(key)}})); setPrefsSaved(false); }
-  function setThreshold(key, val) { setPrefs(p => ({...p,[key]:{...p[key],threshold:val===''?null:parseFloat(val)}})); setPrefsSaved(false); }
+  function togglePref(key)            { setPrefs(p => ({...p,[key]:{...p[key],enabled:!isPrefEnabled(key)}})); setPrefsSaved(false); }
+  function setThreshold(key, val)     { setPrefs(p => ({...p,[key]:{...p[key],threshold:val===''?null:parseFloat(val)}})); setPrefsSaved(false); }
 
   async function savePreferences() {
     setPrefsSaving(true);
@@ -211,25 +433,75 @@ export default function DashboardPage() {
     try { const res = await api.post('/broker/sync'); alert(res.data.message); fetchAll(); if (activeTab==='performance') fetchPerformance(); }
     catch (err) { alert(err.response?.data?.error || 'Failed to sync holdings.'); }
   }
-  function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); router.push('/login'); }
 
-  const tabs = ['holdings','performance','trade','watchlist','alerts','alert settings'];
+  function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    router.push('/login');
+  }
 
-  // Current holding for the order ticket
-  const currentHolding = orderTicket ? performance?.holdings?.find(h => h.ticker === orderTicket.ticker) : null;
+  async function deleteAccount() {
+    const confirmed = confirm('Are you sure you want to delete your account? This will permanently remove all your data and cannot be undone.');
+    if (!confirmed) return;
+    const doubleConfirmed = confirm('Last chance — this is permanent. Delete your account?');
+    if (!doubleConfirmed) return;
+    try {
+      await api.delete('/auth/account');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      router.push('/login');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete account.');
+    }
+  }
+
+  const tabs = ['holdings','performance','trade','watchlist','alerts','leaderboard','friends','alert settings'];
+  const currentHolding = orderTicket ? performance?.holdings?.find(h => h.ticker===orderTicket.ticker) : null;
 
   return (
     <div style={s.page}>
       <div style={s.nav}>
         <span style={s.navBrand}>Portfolio Intelligence</span>
-        <div style={{display:'flex',alignItems:'center',gap:16}}>
-          {user && <span style={s.navUser}>Hi, {user.displayName}</span>}
-          <button style={s.logoutBtn} onClick={logout}>Sign out</button>
+        <div style={{position:'relative'}}>
+          {user && (
+            <button
+              onClick={() => setShowProfileMenu(m => !m)}
+              style={{display:'flex',alignItems:'center',gap:8,background:'none',border:'1px solid #ddd',borderRadius:8,padding:'6px 12px',cursor:'pointer',fontSize:13,color:'#444'}}
+            >
+              <div style={{width:26,height:26,borderRadius:'50%',background:'#1a1a18',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600}}>
+                {user.displayName?.[0]?.toUpperCase() ?? '?'}
+              </div>
+              {user.displayName}
+              <span style={{fontSize:10,color:'#aaa'}}>▼</span>
+            </button>
+          )}
+          {showProfileMenu && (
+            <>
+              <div style={{position:'fixed',inset:0,zIndex:10}} onClick={() => setShowProfileMenu(false)}/>
+              <div style={{position:'absolute',right:0,top:'calc(100% + 8px)',background:'#fff',border:'1px solid #e5e5e3',borderRadius:10,boxShadow:'0 4px 20px rgba(0,0,0,0.1)',minWidth:200,zIndex:20,overflow:'hidden'}}>
+                <div style={{padding:'12px 16px',borderBottom:'1px solid #f0f0ef'}}>
+                  <div style={{fontSize:13,fontWeight:500}}>{user?.displayName}</div>
+                  <div style={{fontSize:12,color:'#aaa',marginTop:2}}>{user?.email}</div>
+                </div>
+                <button
+                  onClick={() => { setShowProfileMenu(false); logout(); }}
+                  style={{width:'100%',textAlign:'left',padding:'11px 16px',fontSize:13,color:'#444',background:'none',border:'none',borderBottom:'1px solid #f0f0ef',cursor:'pointer'}}
+                >
+                  Sign out
+                </button>
+                <button
+                  onClick={() => { setShowProfileMenu(false); deleteAccount(); }}
+                  style={{width:'100%',textAlign:'left',padding:'11px 16px',fontSize:13,color:'#c0392b',background:'none',border:'none',cursor:'pointer'}}
+                >
+                  Delete account
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       <div style={s.content}>
-        {/* Summary cards */}
         <div style={s.cardRow}>
           <div style={s.summaryCard}><div style={s.summaryLabel}>Holdings</div><div style={s.summaryValue}>{holdings.length}</div></div>
           <div style={s.summaryCard}><div style={s.summaryLabel}>Watchlist</div><div style={s.summaryValue}>{watchlist.length}</div></div>
@@ -243,7 +515,6 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Tabs */}
         <div style={s.tabs}>
           {tabs.map(tab => (
             <button key={tab} style={{...s.tab,...(activeTab===tab?s.tabActive:{})}} onClick={()=>setActiveTab(tab)}>
@@ -252,7 +523,6 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Holdings tab */}
         {activeTab==='holdings' && (
           <div style={s.panel}>
             <div style={s.brokerBar}>
@@ -294,7 +564,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Performance tab */}
         {activeTab==='performance' && (
           <div style={s.panel}>
             {perfLoading ? <div style={s.empty}>Loading performance data...</div>
@@ -344,19 +613,14 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Trade tab */}
         {activeTab==='trade' && (
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,alignItems:'start'}}>
-
-            {/* Order ticket */}
             <div style={s.panel}>
               <div style={{fontSize:15,fontWeight:500,marginBottom:16}}>Order ticket</div>
-
               {tradeAccountsLoading ? <div style={s.empty}>Loading accounts...</div>
               : tradeAccounts.length===0 ? <div style={s.empty}>No broker accounts found. Connect a broker first.</div>
               : (
                 <>
-                  {/* Account selector */}
                   <div style={s.fieldGroup}>
                     <label style={s.fieldLabel}>Account</label>
                     <select style={s.select} value={orderAccount} onChange={e=>setOrderAccount(e.target.value)}>
@@ -365,8 +629,6 @@ export default function DashboardPage() {
                       ))}
                     </select>
                   </div>
-
-                  {/* Ticker + action */}
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
                     <div style={s.fieldGroup}>
                       <label style={s.fieldLabel}>Symbol</label>
@@ -380,8 +642,6 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   </div>
-
-                  {/* Order type */}
                   <div style={s.fieldGroup}>
                     <label style={s.fieldLabel}>Order type</label>
                     <div style={{display:'flex',gap:8}}>
@@ -390,30 +650,22 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   </div>
-
-                  {/* Units */}
                   <div style={s.fieldGroup}>
                     <label style={s.fieldLabel}>Shares</label>
                     <input style={s.input} type="number" min="0" step="1" value={orderUnits} onChange={e=>setOrderUnits(e.target.value)} placeholder="Number of shares"/>
                   </div>
-
-                  {/* Limit price */}
                   {orderType==='Limit' && (
                     <div style={s.fieldGroup}>
                       <label style={s.fieldLabel}>Limit price ($)</label>
                       <input style={s.input} type="number" min="0" step="0.01" value={orderPrice} onChange={e=>setOrderPrice(e.target.value)} placeholder="Price per share"/>
                     </div>
                   )}
-
-                  {/* Stop price */}
                   {orderType==='Stop' && (
                     <div style={s.fieldGroup}>
                       <label style={s.fieldLabel}>Stop price ($)</label>
                       <input style={s.input} type="number" min="0" step="0.01" value={orderStopPrice} onChange={e=>setOrderStopPrice(e.target.value)} placeholder="Stop trigger price"/>
                     </div>
                   )}
-
-                  {/* Time in force */}
                   <div style={s.fieldGroup}>
                     <label style={s.fieldLabel}>Time in force</label>
                     <div style={{display:'flex',gap:8}}>
@@ -422,14 +674,10 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   </div>
-
-                  {/* Order summary */}
                   {orderTicket?.ticker && orderUnits && (
                     <div style={s.orderSummary}>
                       <div style={{fontSize:12,color:'#888',marginBottom:6}}>Order summary</div>
-                      <div style={{fontSize:14,fontWeight:500}}>
-                        {orderTicket.action} {orderUnits} share{parseFloat(orderUnits)!==1?'s':''} of {orderTicket.ticker}
-                      </div>
+                      <div style={{fontSize:14,fontWeight:500}}>{orderTicket.action} {orderUnits} share{parseFloat(orderUnits)!==1?'s':''} of {orderTicket.ticker}</div>
                       <div style={{fontSize:12,color:'#888',marginTop:3}}>
                         {orderType} order · {orderTIF==='GTC'?'Good till cancelled':'Day order'}
                         {orderType==='Limit'&&orderPrice?` · Limit $${orderPrice}`:''}
@@ -442,12 +690,8 @@ export default function DashboardPage() {
                       )}
                     </div>
                   )}
-
-                  {/* Error / success */}
-                  {orderError && <div style={s.orderError}>{orderError}</div>}
+                  {orderError  && <div style={s.orderError}>{orderError}</div>}
                   {orderResult && <div style={s.orderSuccess}>Order placed successfully.</div>}
-
-                  {/* Submit */}
                   <button
                     style={{...s.primaryBtn,width:'100%',marginTop:12,padding:'11px',background:orderTicket?.action==='SELL'?'#c0392b':'#1a1a18',opacity:(orderLoading||!orderTicket?.ticker||!orderUnits)?0.5:1}}
                     onClick={submitOrder}
@@ -455,20 +699,13 @@ export default function DashboardPage() {
                   >
                     {orderLoading?'Placing order...':`${orderTicket?.action||'Place'} order`}
                   </button>
-
-                  <p style={{fontSize:11,color:'#aaa',marginTop:8,textAlign:'center'}}>
-                    Orders are executed through your connected broker. Review carefully before submitting.
-                  </p>
+                  <p style={{fontSize:11,color:'#aaa',marginTop:8,textAlign:'center'}}>Orders are executed through your connected broker. Review carefully before submitting.</p>
                 </>
               )}
             </div>
-
-            {/* Order history */}
             <div style={s.panel}>
               <div style={{fontSize:15,fontWeight:500,marginBottom:16}}>Order history</div>
-              {orderHistory.length===0 ? (
-                <div style={s.empty}>No orders yet.</div>
-              ) : (
+              {orderHistory.length===0 ? <div style={s.empty}>No orders yet.</div> : (
                 orderHistory.slice(0,20).map((order,i) => (
                   <div key={i} style={s.orderRow}>
                     <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
@@ -488,7 +725,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Watchlist tab */}
         {activeTab==='watchlist' && (
           <div style={s.panel}>
             <form onSubmit={addToWatchlist} style={{display:'flex',gap:8,marginBottom:20}}>
@@ -509,7 +745,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Alerts tab */}
         {activeTab==='alerts' && (
           <div style={s.panel}>
             {alerts.length===0 ? <div style={s.empty}>No alerts yet.</div> : (
@@ -542,7 +777,9 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Alert settings tab */}
+        {activeTab==='leaderboard' && <LeaderboardTab />}
+        {activeTab==='friends'     && <FriendsTab />}
+
         {activeTab==='alert settings' && (
           <div style={s.panel}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
@@ -652,4 +889,6 @@ const s = {
   orderError:      { background:'#fce4ec', color:'#c0392b', borderRadius:7, padding:'10px 14px', fontSize:13, marginTop:10 },
   orderSuccess:    { background:'#e8f5e9', color:'#2a7a4b', borderRadius:7, padding:'10px 14px', fontSize:13, marginTop:10 },
   orderRow:        { padding:'10px 0', borderBottom:'1px solid #f0f0ef' },
+  subTabBtn:       { padding:'6px 16px', borderRadius:20, border:'1px solid #ddd', fontSize:13, cursor:'pointer', background:'#fff', color:'#888', fontWeight:500 },
+  subTabActive:    { background:'#1a1a18', color:'#fff', borderColor:'#1a1a18' },
 };
