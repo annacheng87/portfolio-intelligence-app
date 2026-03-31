@@ -7,55 +7,77 @@ const ALERT_CATEGORIES = [
   {
     group: 'Real-time alerts',
     items: [
-      { key: 'large_holding_move',     label: 'Large holding move',       desc: 'Alert when a stock in your watchlist moves above your threshold',   defaultThreshold: 5,    unit: '%' },
-      { key: 'portfolio_value_change', label: 'Portfolio value change',   desc: 'Alert when your total portfolio moves beyond a daily threshold',    defaultThreshold: 2,    unit: '%' },
-      { key: 'drawdown',               label: 'Drawdown alert',           desc: 'Alert when portfolio drops from a recent 30-day high',              defaultThreshold: 5,    unit: '%' },
-      { key: 'watchlist_price_target', label: 'Watchlist price target',   desc: 'Alert when a watchlist stock crosses your set price target',        defaultThreshold: null, unit: null },
-      { key: 'major_news',             label: 'Major news',               desc: 'Alert when major news hits a held or watchlisted stock',            defaultThreshold: null, unit: null },
-      { key: 'earnings',               label: 'Earnings alerts',          desc: 'Pre-earnings reminder and post-earnings result if a big move',      defaultThreshold: null, unit: null },
-      { key: 'volume_spike',           label: 'Volume spike',             desc: 'Alert when a stock sees unusually high trading volume',             defaultThreshold: 2,    unit: 'x' },
+      { key: 'large_holding_move',     label: 'Large holding move',        desc: 'Alert when a stock in your watchlist moves above your threshold',   defaultThreshold: 5,    unit: '%'  },
+      { key: 'portfolio_value_change', label: 'Portfolio value change',    desc: 'Alert when your total portfolio moves beyond a daily threshold',    defaultThreshold: 2,    unit: '%'  },
+      { key: 'drawdown',               label: 'Drawdown alert',            desc: 'Alert when portfolio drops from a recent 30-day high',              defaultThreshold: 5,    unit: '%'  },
+      { key: 'watchlist_price_target', label: 'Watchlist price target',    desc: 'Alert when a watchlist stock crosses your set price target',        defaultThreshold: null, unit: null },
+      { key: 'major_news',             label: 'Major news',                desc: 'Alert when major news hits a held or watchlisted stock',            defaultThreshold: null, unit: null },
+      { key: 'earnings',               label: 'Earnings alerts',           desc: 'Pre-earnings reminder and post-earnings result if a big move',      defaultThreshold: null, unit: null },
+      { key: 'volume_spike',           label: 'Volume spike',              desc: 'Alert when a stock sees unusually high trading volume',             defaultThreshold: 2,    unit: 'x'  },
     ],
   },
   {
     group: 'Digest alerts',
     items: [
-      { key: 'concentration_risk',   label: 'Concentration risk',     desc: 'Alert when one holding exceeds a large % of your portfolio',      defaultThreshold: 25,   unit: '%' },
-      { key: 'cost_basis_deviation', label: 'Cost basis deviation',   desc: 'Alert when a holding moves significantly from your cost basis',   defaultThreshold: 15,   unit: '%' },
-      { key: 'dividend_corporate',   label: 'Dividends & corporate',  desc: 'Ex-dividend dates, stock splits, mergers, ticker changes',        defaultThreshold: null, unit: null },
-      { key: 'reddit_alignment',     label: 'Reddit + price + news',  desc: 'Multi-signal alert: Reddit buzz, price move, and news all align', defaultThreshold: null, unit: null },
-      { key: 'watchlist_move',       label: 'Watchlist daily move',   desc: 'Alert when a watchlist stock moves sharply with no price target', defaultThreshold: 5,    unit: '%' },
-      { key: 'watchlist_news',       label: 'Watchlist news',         desc: 'News on watchlist stocks — digest unless marked high priority',   defaultThreshold: null, unit: null },
+      { key: 'concentration_risk',   label: 'Concentration risk',      desc: 'Alert when one holding exceeds a large % of your portfolio',      defaultThreshold: 25,   unit: '%'  },
+      { key: 'cost_basis_deviation', label: 'Cost basis deviation',    desc: 'Alert when a holding moves significantly from your cost basis',   defaultThreshold: 15,   unit: '%'  },
+      { key: 'dividend_corporate',   label: 'Dividends & corporate',   desc: 'Ex-dividend dates, stock splits, mergers, ticker changes',        defaultThreshold: null, unit: null },
+      { key: 'reddit_alignment',     label: 'Reddit + price + news',   desc: 'Multi-signal: Reddit buzz, price move, and news all align',       defaultThreshold: null, unit: null },
+      { key: 'watchlist_move',       label: 'Watchlist daily move',    desc: 'Alert when a watchlist stock moves sharply with no price target', defaultThreshold: 5,    unit: '%'  },
+      { key: 'watchlist_news',       label: 'Watchlist news',          desc: 'News on watchlist stocks — digest unless marked high priority',   defaultThreshold: null, unit: null },
     ],
   },
   {
     group: 'Leaderboard alerts',
     items: [
-      { key: 'rank_passed',       label: 'Someone passes your rank', desc: 'Alert when your leaderboard rank drops by at least one spot', defaultThreshold: null, unit: null },
-      { key: 'top_3_entered',     label: 'You enter top 3 or top 10', desc: 'Alert when you move into the top 3 or top 10',              defaultThreshold: null, unit: null },
-      { key: 'streak_milestone',  label: 'Streaks & milestones',      desc: 'Performance streaks, best rank this month, first milestones', defaultThreshold: null, unit: null },
+      { key: 'rank_passed',      label: 'Someone passes your rank',  desc: 'Alert when your leaderboard rank drops by at least one spot', defaultThreshold: null, unit: null },
+      { key: 'top_3_entered',    label: 'You enter top 3 or top 10', desc: 'Alert when you move into the top 3 or top 10',               defaultThreshold: null, unit: null },
+      { key: 'streak_milestone', label: 'Streaks & milestones',      desc: 'Performance streaks, best rank this month, first milestones', defaultThreshold: null, unit: null },
     ],
   },
   {
     group: 'Digests',
     items: [
-      { key: 'daily_digest',  label: 'Daily digest email',  desc: 'One email after market close with your full daily summary',  defaultThreshold: null, unit: null },
-      { key: 'weekly_digest', label: 'Weekly digest email', desc: 'Saturday morning recap of the full week',                    defaultThreshold: null, unit: null },
-      { key: 'sms_realtime',  label: 'SMS for real-time alerts', desc: 'Short SMS alongside email for real-time alerts only',   defaultThreshold: null, unit: null },
+      { key: 'daily_digest',  label: 'Daily digest email',       desc: 'One email after market close with your full daily summary', defaultThreshold: null, unit: null },
+      { key: 'weekly_digest', label: 'Weekly digest email',      desc: 'Saturday morning recap of the full week',                   defaultThreshold: null, unit: null },
+      { key: 'sms_realtime',  label: 'SMS for real-time alerts', desc: 'Short SMS alongside email for real-time alerts only',       defaultThreshold: null, unit: null },
     ],
   },
 ];
 
+function fmt(n, decimals = 2) {
+  if (n === null || n === undefined) return '—';
+  return parseFloat(n).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+function fmtDollar(n) {
+  if (n === null || n === undefined) return '—';
+  const abs = Math.abs(parseFloat(n));
+  const sign = parseFloat(n) < 0 ? '-' : '';
+  return `${sign}$${abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+function fmtPct(n) {
+  if (n === null || n === undefined) return '—';
+  const sign = parseFloat(n) >= 0 ? '+' : '';
+  return `${sign}${parseFloat(n).toFixed(2)}%`;
+}
+function pctColor(n) {
+  if (n === null || n === undefined) return '#888';
+  return parseFloat(n) >= 0 ? '#2a7a4b' : '#c0392b';
+}
+
 export default function DashboardPage() {
-  const [user, setUser]               = useState(null);
-  const [holdings, setHoldings]       = useState([]);
-  const [watchlist, setWatchlist]     = useState([]);
-  const [alerts, setAlerts]           = useState([]);
+  const [user, setUser]                 = useState(null);
+  const [holdings, setHoldings]         = useState([]);
+  const [performance, setPerformance]   = useState(null);
+  const [perfLoading, setPerfLoading]   = useState(false);
+  const [watchlist, setWatchlist]       = useState([]);
+  const [alerts, setAlerts]             = useState([]);
   const [brokerStatus, setBrokerStatus] = useState(null);
-  const [newTicker, setNewTicker]     = useState('');
-  const [activeTab, setActiveTab]     = useState('holdings');
-  const [prefs, setPrefs]             = useState({});
-  const [prefsSaving, setPrefsSaving] = useState(false);
-  const [prefsSaved, setPrefsSaved]   = useState(false);
+  const [newTicker, setNewTicker]       = useState('');
+  const [activeTab, setActiveTab]       = useState('holdings');
+  const [prefs, setPrefs]               = useState({});
+  const [prefsSaving, setPrefsSaving]   = useState(false);
+  const [prefsSaved, setPrefsSaved]     = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -79,14 +101,9 @@ export default function DashboardPage() {
       setWatchlist(w.data.watchlist);
       setAlerts(a.data.alerts);
       setBrokerStatus(b.data);
-
-      // Build prefs map from response
       const map = {};
       for (const pref of p.data.preferences) {
-        map[pref.alertType] = {
-          enabled:   pref.enabled,
-          threshold: pref.threshold ?? pref.defaultThreshold ?? null,
-        };
+        map[pref.alertType] = { enabled: pref.enabled, threshold: pref.threshold ?? pref.defaultThreshold ?? null };
       }
       setPrefs(map);
     } catch (err) {
@@ -94,32 +111,38 @@ export default function DashboardPage() {
     }
   }
 
-  function isPrefEnabled(key) {
-    if (prefs[key] === undefined) return true; // default on
-    return prefs[key].enabled;
+  async function fetchPerformance() {
+    setPerfLoading(true);
+    try {
+      const res = await api.get('/portfolio/performance');
+      setPerformance(res.data);
+    } catch (err) {
+      console.error('Failed to fetch performance:', err);
+    } finally {
+      setPerfLoading(false);
+    }
   }
 
+  useEffect(() => {
+    if (activeTab === 'performance' && !performance) fetchPerformance();
+  }, [activeTab]);
+
+  function isPrefEnabled(key) {
+    if (prefs[key] === undefined) return true;
+    return prefs[key].enabled;
+  }
   function getPrefThreshold(key, defaultValue) {
     if (prefs[key] === undefined) return defaultValue;
     return prefs[key].threshold ?? defaultValue;
   }
-
   function togglePref(key) {
-    setPrefs(prev => ({
-      ...prev,
-      [key]: { ...prev[key], enabled: !isPrefEnabled(key) },
-    }));
+    setPrefs(prev => ({ ...prev, [key]: { ...prev[key], enabled: !isPrefEnabled(key) } }));
     setPrefsSaved(false);
   }
-
   function setThreshold(key, value) {
-    setPrefs(prev => ({
-      ...prev,
-      [key]: { ...prev[key], threshold: value === '' ? null : parseFloat(value) },
-    }));
+    setPrefs(prev => ({ ...prev, [key]: { ...prev[key], threshold: value === '' ? null : parseFloat(value) } }));
     setPrefsSaved(false);
   }
-
   async function savePreferences() {
     setPrefsSaving(true);
     try {
@@ -150,40 +173,33 @@ export default function DashboardPage() {
       alert(err.response?.data?.error || 'Failed to add ticker.');
     }
   }
-
   async function removeFromWatchlist(ticker) {
     try {
       await api.delete(`/portfolio/watchlist/${ticker}`);
       fetchAll();
-    } catch (err) {
-      alert('Failed to remove ticker.');
-    }
+    } catch (err) { alert('Failed to remove ticker.'); }
   }
-
   async function connectBroker() {
     try {
       const res = await api.post('/broker/connect');
       window.open(res.data.redirectUri, '_blank');
-    } catch (err) {
-      alert(err.response?.data?.error || 'Failed to initiate broker connection.');
-    }
+    } catch (err) { alert(err.response?.data?.error || 'Failed to initiate broker connection.'); }
   }
-
   async function syncHoldings() {
     try {
       const res = await api.post('/broker/sync');
       alert(res.data.message);
       fetchAll();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Failed to sync holdings.');
-    }
+      if (activeTab === 'performance') fetchPerformance();
+    } catch (err) { alert(err.response?.data?.error || 'Failed to sync holdings.'); }
   }
-
   function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     router.push('/login');
   }
+
+  const tabs = ['holdings', 'performance', 'watchlist', 'alerts', 'alert settings'];
 
   return (
     <div style={s.page}>
@@ -196,6 +212,7 @@ export default function DashboardPage() {
       </div>
 
       <div style={s.content}>
+        {/* Summary cards */}
         <div style={s.cardRow}>
           <div style={s.summaryCard}>
             <div style={s.summaryLabel}>Holdings</div>
@@ -209,10 +226,20 @@ export default function DashboardPage() {
             <div style={s.summaryLabel}>Unread alerts</div>
             <div style={s.summaryValue}>{alerts.filter(a => !a.isRead).length}</div>
           </div>
+          {performance?.summary && (
+            <div style={s.summaryCard}>
+              <div style={s.summaryLabel}>Portfolio value</div>
+              <div style={s.summaryValue}>{fmtDollar(performance.summary.totalValue)}</div>
+              <div style={{ fontSize: 12, color: pctColor(performance.summary.dailyPnLPct), marginTop: 4 }}>
+                {fmtPct(performance.summary.dailyPnLPct)} today
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* Tabs */}
         <div style={s.tabs}>
-          {['holdings', 'watchlist', 'alerts', 'alert settings'].map(tab => (
+          {tabs.map(tab => (
             <button key={tab}
               style={{ ...s.tab, ...(activeTab === tab ? s.tabActive : {}) }}
               onClick={() => setActiveTab(tab)}>
@@ -221,6 +248,7 @@ export default function DashboardPage() {
           ))}
         </div>
 
+        {/* Holdings tab */}
         {activeTab === 'holdings' && (
           <div style={s.panel}>
             <div style={s.brokerBar}>
@@ -243,9 +271,7 @@ export default function DashboardPage() {
             </div>
             {holdings.length === 0 ? (
               <div style={s.empty}>
-                {brokerStatus?.connected
-                  ? 'No holdings found. Try syncing your account.'
-                  : 'Connect a broker account to see your positions here.'}
+                {brokerStatus?.connected ? 'No holdings found. Try syncing.' : 'Connect a broker to see your positions.'}
               </div>
             ) : (
               <table style={s.table}>
@@ -270,6 +296,99 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Performance tab */}
+        {activeTab === 'performance' && (
+          <div style={s.panel}>
+            {perfLoading ? (
+              <div style={s.empty}>Loading performance data...</div>
+            ) : !performance ? (
+              <div style={s.empty}>No performance data yet. Connect a broker and sync your holdings first.</div>
+            ) : (
+              <>
+                {/* Portfolio summary row */}
+                <div style={s.perfSummaryRow}>
+                  <div style={s.perfStat}>
+                    <div style={s.perfStatLabel}>Total value</div>
+                    <div style={s.perfStatValue}>{fmtDollar(performance.summary.totalValue)}</div>
+                  </div>
+                  <div style={s.perfStat}>
+                    <div style={s.perfStatLabel}>Total cost</div>
+                    <div style={s.perfStatValue}>{fmtDollar(performance.summary.totalCost)}</div>
+                  </div>
+                  <div style={s.perfStat}>
+                    <div style={s.perfStatLabel}>Total return</div>
+                    <div style={{ ...s.perfStatValue, color: pctColor(performance.summary.totalReturn) }}>
+                      {fmtDollar(performance.summary.totalReturn)}
+                    </div>
+                    <div style={{ fontSize: 12, color: pctColor(performance.summary.totalReturnPct) }}>
+                      {fmtPct(performance.summary.totalReturnPct)}
+                    </div>
+                  </div>
+                  <div style={s.perfStat}>
+                    <div style={s.perfStatLabel}>Today's P&L</div>
+                    <div style={{ ...s.perfStatValue, color: pctColor(performance.summary.dailyPnL) }}>
+                      {fmtDollar(performance.summary.dailyPnL)}
+                    </div>
+                    <div style={{ fontSize: 12, color: pctColor(performance.summary.dailyPnLPct) }}>
+                      {fmtPct(performance.summary.dailyPnLPct)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Per-holding table */}
+                {performance.holdings.length === 0 ? (
+                  <div style={s.empty}>No holdings to display.</div>
+                ) : (
+                  <table style={{ ...s.table, marginTop: 20 }}>
+                    <thead>
+                      <tr>
+                        <th style={s.th}>Ticker</th>
+                        <th style={s.th}>Price</th>
+                        <th style={s.th}>Qty</th>
+                        <th style={s.th}>Value</th>
+                        <th style={s.th}>Weight</th>
+                        <th style={s.th}>Today</th>
+                        <th style={s.th}>Total return</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {performance.holdings.map(h => (
+                        <tr key={h.id}>
+                          <td style={s.td}><strong>{h.ticker}</strong></td>
+                          <td style={s.td}>{h.currentPrice ? `$${fmt(h.currentPrice)}` : '—'}</td>
+                          <td style={s.td}>{fmt(h.quantity, 4)}</td>
+                          <td style={s.td}>{fmtDollar(h.positionValue)}</td>
+                          <td style={s.td}>
+                            {h.portfolioWeight !== null ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div style={{ width: 48, height: 4, background: '#f0f0ef', borderRadius: 2, overflow: 'hidden' }}>
+                                  <div style={{ width: `${Math.min(h.portfolioWeight, 100)}%`, height: 4, background: '#1a1a18', borderRadius: 2 }} />
+                                </div>
+                                <span style={{ fontSize: 12 }}>{fmt(h.portfolioWeight, 1)}%</span>
+                              </div>
+                            ) : '—'}
+                          </td>
+                          <td style={{ ...s.td, color: pctColor(h.dailyPct) }}>
+                            {fmtPct(h.dailyPct)}
+                          </td>
+                          <td style={{ ...s.td, color: pctColor(h.gainLossPct) }}>
+                            <div>{fmtDollar(h.gainLoss)}</div>
+                            <div style={{ fontSize: 11 }}>{fmtPct(h.gainLossPct)}</div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                <div style={{ marginTop: 12, textAlign: 'right' }}>
+                  <button style={s.syncBtn} onClick={fetchPerformance}>Refresh prices</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Watchlist tab */}
         {activeTab === 'watchlist' && (
           <div style={s.panel}>
             <form onSubmit={addToWatchlist} style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
@@ -291,10 +410,11 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Alerts tab */}
         {activeTab === 'alerts' && (
           <div style={s.panel}>
             {alerts.length === 0 ? (
-              <div style={s.empty}>No alerts yet. These will appear once the alerts engine is running.</div>
+              <div style={s.empty}>No alerts yet. These appear once the alert engine is running.</div>
             ) : (
               alerts.map(alert => (
                 <div key={alert.id} style={{ ...s.alertCard, opacity: alert.isRead ? 0.6 : 1 }}>
@@ -326,6 +446,7 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Alert settings tab */}
         {activeTab === 'alert settings' && (
           <div style={s.panel}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -340,7 +461,6 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
-
             {ALERT_CATEGORIES.map(cat => (
               <div key={cat.group} style={{ marginBottom: 28 }}>
                 <div style={s.prefGroupLabel}>{cat.group}</div>
@@ -379,7 +499,6 @@ export default function DashboardPage() {
                 ))}
               </div>
             ))}
-
             <div style={{ paddingTop: 16, borderTop: '1px solid #f0f0ef', display: 'flex', justifyContent: 'flex-end' }}>
               <button style={s.primaryBtn} onClick={savePreferences} disabled={prefsSaving}>
                 {prefsSaving ? 'Saving...' : 'Save preferences'}
@@ -398,12 +517,12 @@ const s = {
   navBrand:        { fontSize: 15, fontWeight: 500 },
   navUser:         { fontSize: 13, color: '#888' },
   logoutBtn:       { fontSize: 13, color: '#666', background: 'none', border: '1px solid #ddd', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' },
-  content:         { maxWidth: 860, margin: '0 auto', padding: '28px 24px' },
-  cardRow:         { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 },
+  content:         { maxWidth: 900, margin: '0 auto', padding: '28px 24px' },
+  cardRow:         { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 28 },
   summaryCard:     { background: '#fff', border: '1px solid #e5e5e3', borderRadius: 10, padding: '18px 20px' },
   summaryLabel:    { fontSize: 12, color: '#888', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' },
   summaryValue:    { fontSize: 26, fontWeight: 500 },
-  tabs:            { display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid #e5e5e3' },
+  tabs:            { display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid #e5e5e3', flexWrap: 'wrap' },
   tab:             { padding: '8px 18px', background: 'none', border: 'none', borderBottom: '2px solid transparent', cursor: 'pointer', fontSize: 14, color: '#888', marginBottom: -1 },
   tabActive:       { color: '#1a1a18', borderBottomColor: '#1a1a18', fontWeight: 500 },
   panel:           { background: '#fff', border: '1px solid #e5e5e3', borderRadius: 10, padding: '20px 24px' },
@@ -412,7 +531,7 @@ const s = {
   input:           { padding: '9px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, outline: 'none' },
   table:           { width: '100%', borderCollapse: 'collapse' },
   th:              { textAlign: 'left', fontSize: 12, color: '#888', padding: '8px 12px', borderBottom: '1px solid #eee', fontWeight: 500 },
-  td:              { padding: '12px', fontSize: 14, borderBottom: '1px solid #f0f0ef' },
+  td:              { padding: '10px 12px', fontSize: 13, borderBottom: '1px solid #f0f0ef' },
   listRow:         { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f0f0ef' },
   removeBtn:       { fontSize: 12, color: '#c00', background: 'none', border: 'none', cursor: 'pointer' },
   alertCard:       { border: '1px solid #e5e5e3', borderRadius: 8, padding: '14px 16px', marginBottom: 12 },
@@ -428,6 +547,10 @@ const s = {
   brokerConnected: { fontSize: 13, color: '#2a7a4b', fontWeight: 500 },
   connectBtn:      { background: '#1a1a18', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' },
   syncBtn:         { background: 'none', color: '#1a1a18', border: '1px solid #ddd', borderRadius: 8, padding: '6px 14px', fontSize: 12, cursor: 'pointer' },
+  perfSummaryRow:  { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 8 },
+  perfStat:        { background: '#f9f9f8', borderRadius: 8, padding: '14px 16px' },
+  perfStatLabel:   { fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 },
+  perfStatValue:   { fontSize: 20, fontWeight: 500 },
   prefGroupLabel:  { fontSize: 11, fontWeight: 500, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 },
   prefRow:         { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #f0f0ef', gap: 16 },
   prefLeft:        { flex: 1 },

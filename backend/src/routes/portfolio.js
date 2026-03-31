@@ -3,6 +3,7 @@ const router = express.Router();
 const { Pool } = require('pg');
 const requireAuth = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
+const { getPreviousClose } = require('../services/marketData');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -26,6 +27,143 @@ router.get('/holdings', requireAuth, async (req, res) => {
   }
 });
 
+// ─── Performance ──────────────────────────────────────────────────────────────
+
+// GET /api/portfolio/performance
+// Returns holdings enriched with live prices, values, returns, and portfolio weights.
+// Also returns portfolio-level totals: total value, total cost, total return, daily P&L.
+router.get('/performance', requireAuth, async (req, res) => {
+  try {
+    // 1. Fetch holdings from DB
+    const holdingsResult = await pool.query(
+      `SELECT h.* FROM "Holding" h
+       JOIN "BrokerConnection" bc ON h."brokerConnectionId" = bc.id
+       WHERE bc."userId" = $1`,
+      [req.userId]
+    );
+    const holdings = holdingsResult.rows;
+
+    if (holdings.length === 0) {
+      return res.json({
+        holdings: [],
+        summary: {
+          totalValue:       0,
+          totalCost:        0,
+          totalReturn:      0,
+          totalReturnPct:   0,
+          dailyPnL:         0,
+          dailyPnLPct:      0,
+        },
+      });
+    }
+
+    // 2. Fetch live prices for all tickers in parallel
+    // Polygon free tier: use prev close as "current" price
+    const tickers = [...new Set(holdings.map(h => h.ticker))];
+    const priceResults = await Promise.all(
+      tickers.map(ticker => getPreviousClose(ticker))
+    );
+
+    // Build a price map: { AAPL: { close, open, ... } }
+    const priceMap = {};
+    for (const p of priceResults) {
+      if (p) priceMap[p.ticker] = p;
+    }
+
+    // 3. Enrich each holding with price data
+    let totalValue    = 0;
+    let totalCost     = 0;
+    let totalDailyPnL = 0;
+
+    const enriched = holdings.map(h => {
+      const qty      = parseFloat(h.quantity);
+      const avgCost  = parseFloat(h.avgCostBasis);
+      const price    = priceMap[h.ticker];
+
+      const currentPrice  = price?.close  ?? null;
+      const openPrice     = price?.open   ?? null;
+
+      // Position value
+      const positionValue = currentPrice !== null ? qty * currentPrice : null;
+      const positionCost  = qty * avgCost;
+
+      // Return vs cost basis
+      const gainLoss      = positionValue !== null ? positionValue - positionCost : null;
+      const gainLossPct   = positionValue !== null ? ((positionValue - positionCost) / positionCost) * 100 : null;
+
+      // Daily P&L (today's open vs close)
+      const dailyPnL      = (currentPrice !== null && openPrice !== null)
+        ? qty * (currentPrice - openPrice)
+        : null;
+      const dailyPct      = (currentPrice !== null && openPrice !== null)
+        ? ((currentPrice - openPrice) / openPrice) * 100
+        : null;
+
+      if (positionValue !== null) totalValue    += positionValue;
+      if (dailyPnL      !== null) totalDailyPnL += dailyPnL;
+      totalCost += positionCost;
+
+      return {
+        id:             h.id,
+        ticker:         h.ticker,
+        quantity:       qty,
+        avgCostBasis:   avgCost,
+        currentPrice,
+        positionValue,
+        positionCost,
+        gainLoss,
+        gainLossPct,
+        dailyPnL,
+        dailyPct,
+        portfolioWeight: null, // filled in after totals
+      };
+    });
+
+    // 4. Calculate portfolio weights now that we have totalValue
+    for (const h of enriched) {
+      h.portfolioWeight = (h.positionValue !== null && totalValue > 0)
+        ? (h.positionValue / totalValue) * 100
+        : null;
+    }
+
+    // Sort by portfolio weight descending
+    enriched.sort((a, b) => (b.portfolioWeight ?? 0) - (a.portfolioWeight ?? 0));
+
+    const totalReturn    = totalValue - totalCost;
+    const totalReturnPct = totalCost > 0 ? (totalReturn / totalCost) * 100 : 0;
+    const dailyPnLPct    = (totalValue - totalDailyPnL) > 0
+      ? (totalDailyPnL / (totalValue - totalDailyPnL)) * 100
+      : 0;
+
+    // 5. Save a portfolio snapshot so the scheduler can use it for digests
+    try {
+      await pool.query(
+        `INSERT INTO "PortfolioSnapshot" (id, "userId", "totalValue", "dailyPctChange")
+         VALUES ($1, $2, $3, $4)`,
+        [uuidv4(), req.userId, totalValue.toFixed(2), dailyPnLPct.toFixed(4)]
+      );
+    } catch (snapErr) {
+      // Non-fatal — don't fail the request if snapshot save fails
+      console.error('Snapshot save error:', snapErr.message);
+    }
+
+    res.json({
+      holdings: enriched,
+      summary: {
+        totalValue:     parseFloat(totalValue.toFixed(2)),
+        totalCost:      parseFloat(totalCost.toFixed(2)),
+        totalReturn:    parseFloat(totalReturn.toFixed(2)),
+        totalReturnPct: parseFloat(totalReturnPct.toFixed(2)),
+        dailyPnL:       parseFloat(totalDailyPnL.toFixed(2)),
+        dailyPnLPct:    parseFloat(dailyPnLPct.toFixed(2)),
+      },
+    });
+  } catch (err) {
+    console.error('PERFORMANCE ERROR:', err);
+    res.status(500).json({ error: 'Could not calculate performance.' });
+  }
+});
+
 // ─── Watchlist ────────────────────────────────────────────────────────────────
 
 // GET /api/portfolio/watchlist
@@ -46,7 +184,6 @@ router.get('/watchlist', requireAuth, async (req, res) => {
 router.post('/watchlist', requireAuth, async (req, res) => {
   const { ticker } = req.body;
   if (!ticker) return res.status(400).json({ error: 'Ticker is required.' });
-
   try {
     const id = uuidv4();
     const result = await pool.query(
@@ -91,7 +228,6 @@ router.get('/alerts', requireAuth, async (req, res) => {
 });
 
 // PATCH /api/portfolio/alerts/:id/read
-// Marks a single alert as read
 router.patch('/alerts/:id/read', requireAuth, async (req, res) => {
   try {
     await pool.query(
@@ -107,7 +243,6 @@ router.patch('/alerts/:id/read', requireAuth, async (req, res) => {
 
 // ─── Alert Preferences ────────────────────────────────────────────────────────
 
-// Default preferences applied when a user has no saved settings yet
 const DEFAULT_PREFERENCES = [
   { alertType: 'large_holding_move',     enabled: true,  threshold: 5    },
   { alertType: 'portfolio_value_change', enabled: true,  threshold: 2    },
@@ -131,20 +266,15 @@ const DEFAULT_PREFERENCES = [
 ];
 
 // GET /api/portfolio/alert-preferences
-// Returns all alert preferences for the logged-in user.
-// If the user has never saved preferences, returns the defaults.
 router.get('/alert-preferences', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT * FROM "AlertPreference" WHERE "userId" = $1`,
       [req.userId]
     );
-
     if (result.rows.length === 0) {
-      // User has no saved prefs yet — return defaults (not saved to DB yet)
       return res.json({ preferences: DEFAULT_PREFERENCES, isDefault: true });
     }
-
     res.json({ preferences: result.rows, isDefault: false });
   } catch (err) {
     console.error('GET PREFS ERROR:', err);
@@ -153,25 +283,16 @@ router.get('/alert-preferences', requireAuth, async (req, res) => {
 });
 
 // PUT /api/portfolio/alert-preferences
-// Saves the full set of alert preferences for the logged-in user.
-// Expects body: { preferences: [{ alertType, enabled, threshold }] }
-// Uses upsert — creates rows that don't exist, updates ones that do.
 router.put('/alert-preferences', requireAuth, async (req, res) => {
   const { preferences } = req.body;
-
   if (!Array.isArray(preferences) || preferences.length === 0) {
     return res.status(400).json({ error: 'preferences array is required.' });
   }
-
   try {
-    // Use a transaction so either all preferences save or none do
     await pool.query('BEGIN');
-
     for (const pref of preferences) {
       const { alertType, enabled, threshold } = pref;
-
       if (!alertType) continue;
-
       await pool.query(
         `INSERT INTO "AlertPreference" (id, "userId", "alertType", enabled, threshold, "updatedAt")
          VALUES ($1, $2, $3, $4, $5, NOW())
@@ -180,9 +301,7 @@ router.put('/alert-preferences', requireAuth, async (req, res) => {
         [uuidv4(), req.userId, alertType, enabled ?? true, threshold ?? null]
       );
     }
-
     await pool.query('COMMIT');
-
     res.json({ message: 'Alert preferences saved.' });
   } catch (err) {
     await pool.query('ROLLBACK');
