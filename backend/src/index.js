@@ -25,6 +25,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/portfolio', require('./routes/portfolio'));
 app.use('/api/broker', require('./routes/broker'));
+app.use('/api/trading', require('./routes/trading'));
 
 
 app.listen(PORT, '0.0.0.0', () => {
