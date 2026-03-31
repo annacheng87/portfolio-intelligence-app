@@ -6,6 +6,8 @@ const client = new Snaptrade({
 });
 
 // Register a new SnapTrade user (called once when user connects broker)
+// Returns { userId, userSecret } on success
+// Returns null if user already exists in SnapTrade (code 1012)
 async function registerSnaptradeUser(userId) {
   try {
     const response = await client.authentication.registerSnapTradeUser({
@@ -13,12 +15,34 @@ async function registerSnaptradeUser(userId) {
     });
     return response.data;
   } catch (err) {
-    // User might already be registered — that's fine
-    if (err?.response?.status === 409) {
-      console.log('Snaptrade user already registered:', userId);
-      return { userId };
+    const status = err?.status;
+    const code   = err?.responseBody?.code;
+
+    console.error('Snaptrade register error — status:', status, '| code:', code);
+
+    // code 1012 = user already exists in SnapTrade
+    if (status === 400 && code === '1012') {
+      console.log('Snaptrade user already exists (1012) — will use existing secret from DB');
+      return null;
     }
-    console.error('Snaptrade register error:', err.message);
+    if (status === 409) {
+      console.log('Snaptrade user already exists (409) — will use existing secret from DB');
+      return null;
+    }
+    throw err;
+  }
+}
+
+// Delete a SnapTrade user so they can be re-registered fresh
+async function deleteSnaptradeUser(userId, userSecret) {
+  try {
+    await client.authentication.deleteSnapTradeUser({
+      userId,
+      userSecret,
+    });
+    console.log('Snaptrade user deleted:', userId);
+  } catch (err) {
+    console.error('Snaptrade delete user error:', err?.status, err?.responseBody?.code);
     throw err;
   }
 }
@@ -32,7 +56,7 @@ async function generateConnectionLink(userId, userSecret) {
     });
     return response.data;
   } catch (err) {
-    console.error('Snaptrade connection link error:', err.message);
+    console.error('Snaptrade connection link error — status:', err?.status, '| code:', err?.responseBody?.code);
     throw err;
   }
 }
@@ -78,13 +102,13 @@ async function getAllHoldings(userId, userSecret) {
       if (holdings?.positions) {
         for (const position of holdings.positions) {
           allHoldings.push({
-            accountId: account.id,
-            accountName: account.name,
-            ticker: position.symbol?.symbol || position.symbol?.ticker,
-            quantity: position.units,
+            accountId:    account.id,
+            accountName:  account.name,
+            ticker: position.symbol?.symbol?.symbol || position.symbol?.symbol?.raw_symbol || position.symbol?.ticker || position.symbol?.raw_symbol,
+            quantity:     position.units,
             avgCostBasis: position.average_purchase_price || 0,
             currentPrice: position.price,
-            marketValue: position.market_value,
+            marketValue:  position.market_value,
           });
         }
       }
@@ -98,6 +122,7 @@ async function getAllHoldings(userId, userSecret) {
 
 module.exports = {
   registerSnaptradeUser,
+  deleteSnaptradeUser,
   generateConnectionLink,
   getUserAccounts,
   getAllHoldings,
