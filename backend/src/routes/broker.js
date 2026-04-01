@@ -4,22 +4,20 @@ const { Pool } = require('pg');
 const { v4: uuidv4 } = require('uuid');
 const requireAuth = require('../middleware/auth');
 const {
-  registerSnaptradeUser,
-  deleteSnaptradeUser,
-  generateConnectionLink,
-  getAllHoldings,
+  registerSnaptradeUser, deleteSnaptradeUser,
+  generateConnectionLink, getAllHoldings,
 } = require('../services/snaptrade');
+const { evaluateAchievements } = require('../lib/achievementEngine');
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-// POST /api/broker/connect
 router.post('/connect', requireAuth, async (req, res) => {
   try {
     const userResult = await pool.query(
       `SELECT "snaptradeSecret", "snaptradeUserId" FROM "User" WHERE id = $1`,
       [req.userId]
     );
-    let userSecret      = userResult.rows[0]?.snaptradeSecret;
+    let userSecret = userResult.rows[0]?.snaptradeSecret;
     let snaptradeUserId = userResult.rows[0]?.snaptradeUserId || req.userId;
 
     if (!userSecret) {
@@ -43,14 +41,13 @@ router.post('/connect', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/broker/sync
 router.post('/sync', requireAuth, async (req, res) => {
   try {
     const userResult = await pool.query(
       `SELECT "snaptradeSecret", "snaptradeUserId" FROM "User" WHERE id = $1`,
       [req.userId]
     );
-    const userSecret      = userResult.rows[0]?.snaptradeSecret;
+    const userSecret = userResult.rows[0]?.snaptradeSecret;
     const snaptradeUserId = userResult.rows[0]?.snaptradeUserId || req.userId;
 
     if (!userSecret) {
@@ -58,9 +55,7 @@ router.post('/sync', requireAuth, async (req, res) => {
     }
 
     const holdings = await getAllHoldings(snaptradeUserId, userSecret);
-    if (holdings.length === 0) {
-      return res.json({ message: 'No holdings found.', synced: 0 });
-    }
+    if (holdings.length === 0) return res.json({ message: 'No holdings found.', synced: 0 });
 
     let connectionResult = await pool.query(
       `SELECT id FROM "BrokerConnection" WHERE "userId" = $1 AND provider = 'snaptrade'`,
@@ -91,6 +86,17 @@ router.post('/sync', requireAuth, async (req, res) => {
     }
 
     await pool.query(`UPDATE "BrokerConnection" SET "lastSyncedAt" = NOW() WHERE id = $1`, [connectionId]);
+
+    // Achievement hook
+    try {
+      await evaluateAchievements(req.userId, {
+        brokerSynced: true,
+        holdingsCount: holdings.length,
+      });
+    } catch (e) {
+      console.error('Broker achievement error:', e.message);
+    }
+
     res.json({ message: 'Holdings synced successfully.', synced: holdings.length });
   } catch (err) {
     console.error('Broker sync error:', err.message);
@@ -98,78 +104,49 @@ router.post('/sync', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/broker/reset
-// Wipes SnapTrade user and re-registers with a guaranteed unique ID
 router.post('/reset', requireAuth, async (req, res) => {
   try {
     console.log('--- BROKER RESET START for userId:', req.userId);
-
     const userResult = await pool.query(
       `SELECT "snaptradeSecret", "snaptradeUserId" FROM "User" WHERE id = $1`,
       [req.userId]
     );
-    const existingSecret      = userResult.rows[0]?.snaptradeSecret;
+    const existingSecret = userResult.rows[0]?.snaptradeSecret;
     const existingSnaptradeId = userResult.rows[0]?.snaptradeUserId;
-    console.log('Existing snaptradeUserId:', existingSnaptradeId);
-    console.log('Existing secret exists:', !!existingSecret);
 
-    // Step 1: Try to delete from SnapTrade if we have a secret
     if (existingSecret && existingSnaptradeId) {
       try {
         await deleteSnaptradeUser(existingSnaptradeId, existingSecret);
-        console.log('Deleted SnapTrade user:', existingSnaptradeId);
       } catch (deleteErr) {
-        console.log('Delete failed (ok — may not exist):', deleteErr?.status, deleteErr?.responseBody?.code);
+        console.log('Delete failed (ok):', deleteErr?.status, deleteErr?.responseBody?.code);
       }
     }
 
-    // Step 2: Clear DB
-    console.log('Clearing DB...');
-    await pool.query(
-      `UPDATE "User" SET "snaptradeSecret" = NULL, "snaptradeUserId" = NULL WHERE id = $1`,
-      [req.userId]
-    );
-    await pool.query(
-      `DELETE FROM "BrokerConnection" WHERE "userId" = $1 AND provider = 'snaptrade'`,
-      [req.userId]
-    );
-    console.log('DB cleared');
+    await pool.query(`UPDATE "User" SET "snaptradeSecret" = NULL, "snaptradeUserId" = NULL WHERE id = $1`, [req.userId]);
+    await pool.query(`DELETE FROM "BrokerConnection" WHERE "userId" = $1 AND provider = 'snaptrade'`, [req.userId]);
 
-    // Step 3: Register with a guaranteed unique ID using timestamp + random string
     const rand = Math.random().toString(36).substring(2, 8);
-const snaptradeUserId = `u${Date.now()}${rand}`;
-    console.log('Registering new SnapTrade user ID:', snaptradeUserId);
-
+    const snaptradeUserId = `u${Date.now()}${rand}`;
     const snaptradeUser = await registerSnaptradeUser(snaptradeUserId);
-    console.log('Register result:', snaptradeUser);
 
     if (!snaptradeUser?.userSecret) {
-      console.error('Registration returned no secret');
       return res.status(500).json({ error: 'Could not re-register with broker. Please try again.' });
     }
 
-    // Step 4: Save new credentials
     await pool.query(
       `UPDATE "User" SET "snaptradeSecret" = $1, "snaptradeUserId" = $2 WHERE id = $3`,
       [snaptradeUser.userSecret, snaptradeUserId, req.userId]
     );
-    console.log('New credentials saved');
 
-    // Step 5: Generate connection link
     const connectionData = await generateConnectionLink(snaptradeUserId, snaptradeUser.userSecret);
     console.log('--- BROKER RESET COMPLETE');
-
-    res.json({
-      redirectUri: connectionData.redirectURI,
-      message: 'Reset successful. Open the redirectUri to connect your broker.',
-    });
+    res.json({ redirectUri: connectionData.redirectURI, message: 'Reset successful.' });
   } catch (err) {
     console.error('Broker reset error:', err?.status, err?.responseBody?.code, err?.message);
     res.status(500).json({ error: 'Failed to reset broker connection.' });
   }
 });
 
-// GET /api/broker/status
 router.get('/status', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(

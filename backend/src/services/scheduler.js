@@ -197,9 +197,54 @@ async function runAlertCleanup() {
   }
 }
 
+
+
+
+
 // ─── Main scheduler ───────────────────────────────────────────────────────────
 
 function startScheduler() {
+  const cron = require('node-cron');
+const prisma = require('../lib/prisma');
+const { applyDecay } = require('../lib/achievements');
+const { addXp } = require('../lib/achievementEngine');
+
+// XP Decay cron — runs daily at midnight ET
+cron.schedule('0 0 * * *', async () => {
+  console.log('[Cron] Running XP decay check...');
+  try {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    // Find all users who haven't checked in for 7+ days
+    const staleUsers = await prisma.userStats.findMany({
+      where: {
+        lastActiveDate: {
+          lt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+        },
+        xp: { gt: 0 },
+      },
+    });
+
+    for (const stats of staleUsers) {
+      const daysMissed = stats.lastActiveDate
+        ? Math.round((now - new Date(stats.lastActiveDate)) / 86400000)
+        : 999;
+
+      if (daysMissed <= 7) continue;
+
+      // Apply one day of decay (10%)
+      const decayAmount = Math.floor(stats.xp * 0.1);
+      if (decayAmount > 0) {
+        await addXp(stats.userId, -decayAmount, `decay:cron:${todayStr}`);
+        console.log(`[Cron] Decayed ${decayAmount} XP from user ${stats.userId}`);
+      }
+    }
+  } catch (err) {
+    console.error('[Cron] XP decay error:', err);
+  }
+}, { timezone: 'America/New_York' });
+
   console.log('Starting alert scheduler...');
 
   // Run evaluator immediately on startup

@@ -4,24 +4,17 @@ const { Pool } = require('pg');
 const { nanoid } = require('nanoid');
 const { v4: uuidv4 } = require('uuid');
 const requireAuth = require('../middleware/auth');
+const { evaluateAchievements } = require('../lib/achievementEngine');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-// GET /api/friends/code — get or generate your invite code
 router.get('/code', requireAuth, async (req, res) => {
   try {
     const existing = await pool.query(
-      `SELECT code FROM "FriendCode" WHERE "userId" = $1`,
-      [req.userId]
+      `SELECT code FROM "FriendCode" WHERE "userId" = $1`, [req.userId]
     );
+    if (existing.rows.length > 0) return res.json({ code: existing.rows[0].code });
 
-    if (existing.rows.length > 0) {
-      return res.json({ code: existing.rows[0].code });
-    }
-
-    // Generate a new code, retry on collision (extremely rare)
     let code, inserted = false;
     while (!inserted) {
       code = nanoid(8).toUpperCase();
@@ -32,10 +25,9 @@ router.get('/code', requireAuth, async (req, res) => {
         );
         inserted = true;
       } catch (e) {
-        if (e.code !== '23505') throw e; // re-throw if not unique violation
+        if (e.code !== '23505') throw e;
       }
     }
-
     res.json({ code });
   } catch (err) {
     console.error('GET CODE ERROR:', err);
@@ -43,48 +35,40 @@ router.get('/code', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/friends/redeem — redeem a friend code
 router.post('/redeem', requireAuth, async (req, res) => {
   const { code } = req.body;
   if (!code) return res.status(400).json({ error: 'Code is required.' });
 
   try {
-    // Look up the code
     const codeResult = await pool.query(
-      `SELECT "userId" FROM "FriendCode" WHERE code = $1`,
-      [code.toUpperCase()]
+      `SELECT "userId" FROM "FriendCode" WHERE code = $1`, [code.toUpperCase()]
     );
-    if (codeResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Invalid invite code.' });
-    }
+    if (codeResult.rows.length === 0) return res.status(404).json({ error: 'Invalid invite code.' });
 
     const friendId = codeResult.rows[0].userId;
+    if (friendId === req.userId) return res.status(400).json({ error: "That's your own code." });
 
-    if (friendId === req.userId) {
-      return res.status(400).json({ error: "That's your own code." });
-    }
-
-    // Check if already friends
     const alreadyFriends = await pool.query(
       `SELECT id FROM "Friendship" WHERE "userId" = $1 AND "friendId" = $2`,
       [req.userId, friendId]
     );
-    if (alreadyFriends.rows.length > 0) {
-      return res.status(400).json({ error: 'Already friends.' });
-    }
+    if (alreadyFriends.rows.length > 0) return res.status(400).json({ error: 'Already friends.' });
 
-    // Create bidirectional friendship
     await pool.query(
       `INSERT INTO "Friendship" (id, "userId", "friendId") VALUES ($1, $2, $3), ($4, $5, $6)`,
       [uuidv4(), req.userId, friendId, uuidv4(), friendId, req.userId]
     );
 
-    // Return the new friend's display info
-    const friendResult = await pool.query(
-      `SELECT id, "displayName" FROM "User" WHERE id = $1`,
-      [friendId]
-    );
+    // Achievement hook — code OWNER gets the invite achievement
+    try {
+      await evaluateAchievements(friendId, { friendInvited: true });
+    } catch (e) {
+      console.error('Friend achievement error:', e.message);
+    }
 
+    const friendResult = await pool.query(
+      `SELECT id, "displayName" FROM "User" WHERE id = $1`, [friendId]
+    );
     res.json({ success: true, friend: friendResult.rows[0] });
   } catch (err) {
     console.error('REDEEM ERROR:', err);
@@ -92,39 +76,27 @@ router.post('/redeem', requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/friends/leaderboard — friends leaderboard (opted-in only) + yourself
-// IMPORTANT: must be registered BEFORE /:friendId to avoid route collision
 router.get('/leaderboard', requireAuth, async (req, res) => {
   try {
-    // Get all friend IDs
     const friendsResult = await pool.query(
-      `SELECT "friendId" FROM "Friendship" WHERE "userId" = $1`,
-      [req.userId]
+      `SELECT "friendId" FROM "Friendship" WHERE "userId" = $1`, [req.userId]
     );
     const friendIds = friendsResult.rows.map(r => r.friendId);
-
-    // Include self
     const userIds = [req.userId, ...friendIds];
 
-    // Get opted-in users from that set
     const placeholders = userIds.map((_, i) => `$${i + 1}`).join(', ');
     const usersResult = await pool.query(
-      `SELECT id, "displayName" FROM "User"
-       WHERE id IN (${placeholders}) AND "leaderboardOptIn" = true`,
+      `SELECT id, "displayName" FROM "User" WHERE id IN (${placeholders}) AND "leaderboardOptIn" = true`,
       userIds
     );
     const users = usersResult.rows;
-
     if (users.length === 0) return res.json([]);
 
-    // Get latest snapshot for each user
     const snapshots = await Promise.all(
       users.map(u =>
         pool.query(
           `SELECT "dailyPctChange" FROM "PortfolioSnapshot"
-           WHERE "userId" = $1
-           ORDER BY "snapshotAt" DESC
-           LIMIT 1`,
+           WHERE "userId" = $1 ORDER BY "snapshotAt" DESC LIMIT 1`,
           [u.id]
         )
       )
@@ -132,11 +104,9 @@ router.get('/leaderboard', requireAuth, async (req, res) => {
 
     const entries = users
       .map((u, i) => ({
-        userId:         u.id,
-        displayName:    u.displayName || `Trader #${u.id.slice(-4)}`,
-        dailyPctChange: snapshots[i].rows[0]
-          ? parseFloat(snapshots[i].rows[0].dailyPctChange)
-          : null,
+        userId: u.id,
+        displayName: u.displayName || `Trader #${u.id.slice(-4)}`,
+        dailyPctChange: snapshots[i].rows[0] ? parseFloat(snapshots[i].rows[0].dailyPctChange) : null,
         isYou: u.id === req.userId,
       }))
       .filter(e => e.dailyPctChange !== null)
@@ -150,15 +120,12 @@ router.get('/leaderboard', requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/friends — list your friends
 router.get('/', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT u.id, u."displayName", u."leaderboardOptIn"
-       FROM "Friendship" f
-       JOIN "User" u ON u.id = f."friendId"
-       WHERE f."userId" = $1
-       ORDER BY u."displayName" ASC`,
+       FROM "Friendship" f JOIN "User" u ON u.id = f."friendId"
+       WHERE f."userId" = $1 ORDER BY u."displayName" ASC`,
       [req.userId]
     );
     res.json(result.rows);
@@ -168,14 +135,11 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
-// DELETE /api/friends/:friendId — remove a friend (bidirectional)
 router.delete('/:friendId', requireAuth, async (req, res) => {
   const { friendId } = req.params;
   try {
     await pool.query(
-      `DELETE FROM "Friendship"
-       WHERE ("userId" = $1 AND "friendId" = $2)
-          OR ("userId" = $2 AND "friendId" = $1)`,
+      `DELETE FROM "Friendship" WHERE ("userId" = $1 AND "friendId" = $2) OR ("userId" = $2 AND "friendId" = $1)`,
       [req.userId, friendId]
     );
     res.json({ success: true });

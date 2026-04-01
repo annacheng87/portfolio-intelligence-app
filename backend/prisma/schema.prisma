@@ -26,6 +26,12 @@ model User {
   friendCode   FriendCode?
   friendships  Friendship[] @relation("UserFriends")
   friendOf     Friendship[] @relation("FriendOf")
+
+  userStats    UserStats?
+  achievements UserAchievement[]
+
+  xpEvents             XpEvent[]
+  weeklyChallengeDone  UserWeeklyChallenge[]
 }
 
 model BrokerConnection {
@@ -147,4 +153,60 @@ model Friendship {
   friend    User     @relation("FriendOf", fields: [friendId], references: [id])
 
   @@unique([userId, friendId])
+}
+
+model UserStats {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  xp             Int       @default(0)
+  streak         Int       @default(0)
+  bestStreak     Int       @default(0)
+  lastActiveDate DateTime?
+  freezeAvailable Boolean  @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model UserAchievement {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementKey String
+  earnedAt       DateTime @default(now())
+
+  @@unique([userId, achievementKey])
+}
+
+model XpEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  delta     Int
+  reason    String
+  createdAt DateTime @default(now())
+}
+
+model WeeklyChallenge {
+  id          String   @id @default(cuid())
+  weekStart   DateTime
+  key         String
+  label       String
+  description String
+  xpReward    Int
+  createdAt   DateTime @default(now())
+
+  @@unique([weekStart, key])
+}
+
+model UserWeeklyChallenge {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart         DateTime
+  challengeKey      String
+  completedAt       DateTime?
+  createdAt         DateTime @default(now())
+
+  @@unique([userId, weekStart, challengeKey])
 }

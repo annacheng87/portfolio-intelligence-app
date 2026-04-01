@@ -4,14 +4,16 @@ const { Pool } = require('pg');
 const requireAuth = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
 const { getPreviousClose } = require('../services/marketData');
+const { evaluateAchievements } = require('../lib/achievementEngine');
+const { getTierInfo } = require('../lib/achievements');
+const prisma = require('../lib/prisma');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// ─── Holdings ─────────────────────────────────────────────────────────────────
+// ─── Holdings ────────────────────────────────────────────────────────────────
 
-// GET /api/portfolio/holdings
 router.get('/holdings', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
@@ -27,9 +29,8 @@ router.get('/holdings', requireAuth, async (req, res) => {
   }
 });
 
-// ─── Performance ──────────────────────────────────────────────────────────────
+// ─── Performance ─────────────────────────────────────────────────────────────
 
-// GET /api/portfolio/performance
 router.get('/performance', requireAuth, async (req, res) => {
   try {
     const holdingsResult = await pool.query(
@@ -43,107 +44,77 @@ router.get('/performance', requireAuth, async (req, res) => {
     if (holdings.length === 0) {
       return res.json({
         holdings: [],
-        summary: {
-          totalValue:     0,
-          totalCost:      0,
-          totalReturn:    0,
-          totalReturnPct: 0,
-          dailyPnL:       0,
-          dailyPnLPct:    0,
-        },
+        summary: { totalValue: 0, totalCost: 0, totalReturn: 0, totalReturnPct: 0, dailyPnL: 0, dailyPnLPct: 0 },
       });
     }
 
     const tickers = [...new Set(holdings.map(h => h.ticker))];
-    const priceResults = await Promise.all(
-      tickers.map(ticker => getPreviousClose(ticker))
-    );
+    const priceResults = await Promise.all(tickers.map(ticker => getPreviousClose(ticker)));
 
     const priceMap = {};
     for (const p of priceResults) {
       if (p) priceMap[p.ticker] = p;
     }
 
-    let totalValue    = 0;
-    let totalCost     = 0;
-    let totalDailyPnL = 0;
+    let totalValue = 0, totalCost = 0, totalDailyPnL = 0;
 
     const enriched = holdings.map(h => {
-      const qty      = parseFloat(h.quantity);
-      const avgCost  = parseFloat(h.avgCostBasis);
-      const price    = priceMap[h.ticker];
-
+      const qty = parseFloat(h.quantity);
+      const avgCost = parseFloat(h.avgCostBasis);
+      const price = priceMap[h.ticker];
       const currentPrice = price?.close ?? null;
-      const openPrice    = price?.open  ?? null;
-
+      const openPrice = price?.open ?? null;
       const positionValue = currentPrice !== null ? qty * currentPrice : null;
-      const positionCost  = qty * avgCost;
+      const positionCost = qty * avgCost;
+      const gainLoss = positionValue !== null ? positionValue - positionCost : null;
+      const gainLossPct = positionValue !== null ? ((positionValue - positionCost) / positionCost) * 100 : null;
+      const dailyPnL = (currentPrice !== null && openPrice !== null) ? qty * (currentPrice - openPrice) : null;
+      const dailyPct = (currentPrice !== null && openPrice !== null) ? ((currentPrice - openPrice) / openPrice) * 100 : null;
 
-      const gainLoss    = positionValue !== null ? positionValue - positionCost : null;
-      const gainLossPct = positionValue !== null
-        ? ((positionValue - positionCost) / positionCost) * 100
-        : null;
-
-      const dailyPnL = (currentPrice !== null && openPrice !== null)
-        ? qty * (currentPrice - openPrice)
-        : null;
-      const dailyPct = (currentPrice !== null && openPrice !== null)
-        ? ((currentPrice - openPrice) / openPrice) * 100
-        : null;
-
-      if (positionValue !== null) totalValue    += positionValue;
-      if (dailyPnL      !== null) totalDailyPnL += dailyPnL;
+      if (positionValue !== null) totalValue += positionValue;
+      if (dailyPnL !== null) totalDailyPnL += dailyPnL;
       totalCost += positionCost;
 
-      return {
-        id:             h.id,
-        ticker:         h.ticker,
-        quantity:       qty,
-        avgCostBasis:   avgCost,
-        currentPrice,
-        positionValue,
-        positionCost,
-        gainLoss,
-        gainLossPct,
-        dailyPnL,
-        dailyPct,
-        portfolioWeight: null,
-      };
+      return { id: h.id, ticker: h.ticker, quantity: qty, avgCostBasis: avgCost, currentPrice, positionValue, positionCost, gainLoss, gainLossPct, dailyPnL, dailyPct, portfolioWeight: null };
     });
 
     for (const h of enriched) {
-      h.portfolioWeight = (h.positionValue !== null && totalValue > 0)
-        ? (h.positionValue / totalValue) * 100
-        : null;
+      h.portfolioWeight = (h.positionValue !== null && totalValue > 0) ? (h.positionValue / totalValue) * 100 : null;
     }
-
     enriched.sort((a, b) => (b.portfolioWeight ?? 0) - (a.portfolioWeight ?? 0));
 
-    const totalReturn    = totalValue - totalCost;
+    const totalReturn = totalValue - totalCost;
     const totalReturnPct = totalCost > 0 ? (totalReturn / totalCost) * 100 : 0;
-    const dailyPnLPct    = (totalValue - totalDailyPnL) > 0
-      ? (totalDailyPnL / (totalValue - totalDailyPnL)) * 100
-      : 0;
+    const dailyPnLPct = (totalValue - totalDailyPnL) > 0 ? (totalDailyPnL / (totalValue - totalDailyPnL)) * 100 : 0;
 
     try {
       await pool.query(
-        `INSERT INTO "PortfolioSnapshot" (id, "userId", "totalValue", "dailyPctChange")
-         VALUES ($1, $2, $3, $4)`,
+        `INSERT INTO "PortfolioSnapshot" (id, "userId", "totalValue", "dailyPctChange") VALUES ($1, $2, $3, $4)`,
         [uuidv4(), req.userId, totalValue.toFixed(2), dailyPnLPct.toFixed(4)]
       );
     } catch (snapErr) {
       console.error('Snapshot save error:', snapErr.message);
     }
 
+    // Evaluate portfolio milestone achievements
+    try {
+      await evaluateAchievements(req.userId, {
+        holdingsCount: holdings.length,
+        portfolioValue: totalValue,
+      });
+    } catch (e) {
+      console.error('Achievement eval error:', e.message);
+    }
+
     res.json({
       holdings: enriched,
       summary: {
-        totalValue:     parseFloat(totalValue.toFixed(2)),
-        totalCost:      parseFloat(totalCost.toFixed(2)),
-        totalReturn:    parseFloat(totalReturn.toFixed(2)),
+        totalValue: parseFloat(totalValue.toFixed(2)),
+        totalCost: parseFloat(totalCost.toFixed(2)),
+        totalReturn: parseFloat(totalReturn.toFixed(2)),
         totalReturnPct: parseFloat(totalReturnPct.toFixed(2)),
-        dailyPnL:       parseFloat(totalDailyPnL.toFixed(2)),
-        dailyPnLPct:    parseFloat(dailyPnLPct.toFixed(2)),
+        dailyPnL: parseFloat(totalDailyPnL.toFixed(2)),
+        dailyPnLPct: parseFloat(dailyPnLPct.toFixed(2)),
       },
     });
   } catch (err) {
@@ -154,7 +125,6 @@ router.get('/performance', requireAuth, async (req, res) => {
 
 // ─── Watchlist ────────────────────────────────────────────────────────────────
 
-// GET /api/portfolio/watchlist
 router.get('/watchlist', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
@@ -168,7 +138,6 @@ router.get('/watchlist', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/portfolio/watchlist
 router.post('/watchlist', requireAuth, async (req, res) => {
   const { ticker } = req.body;
   if (!ticker) return res.status(400).json({ error: 'Ticker is required.' });
@@ -178,6 +147,19 @@ router.post('/watchlist', requireAuth, async (req, res) => {
       `INSERT INTO "WatchlistItem" (id, "userId", ticker) VALUES ($1, $2, $3) RETURNING *`,
       [id, req.userId, ticker.toUpperCase()]
     );
+
+    // Achievement hook — check watchlist count
+    try {
+      const countResult = await pool.query(
+        `SELECT COUNT(*) FROM "WatchlistItem" WHERE "userId" = $1`,
+        [req.userId]
+      );
+      const count = parseInt(countResult.rows[0].count);
+      await evaluateAchievements(req.userId, { watchlistCount: count });
+    } catch (e) {
+      console.error('Watchlist achievement error:', e.message);
+    }
+
     res.status(201).json({ item: result.rows[0] });
   } catch (err) {
     console.error('ADD WATCHLIST ERROR:', err);
@@ -185,7 +167,6 @@ router.post('/watchlist', requireAuth, async (req, res) => {
   }
 });
 
-// DELETE /api/portfolio/watchlist/:ticker
 router.delete('/watchlist/:ticker', requireAuth, async (req, res) => {
   try {
     await pool.query(
@@ -201,7 +182,6 @@ router.delete('/watchlist/:ticker', requireAuth, async (req, res) => {
 
 // ─── Alerts ───────────────────────────────────────────────────────────────────
 
-// GET /api/portfolio/alerts
 router.get('/alerts', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
@@ -215,7 +195,6 @@ router.get('/alerts', requireAuth, async (req, res) => {
   }
 });
 
-// PATCH /api/portfolio/alerts/:id/read
 router.patch('/alerts/:id/read', requireAuth, async (req, res) => {
   try {
     await pool.query(
@@ -253,7 +232,6 @@ const DEFAULT_PREFERENCES = [
   { alertType: 'sms_realtime',           enabled: false, threshold: null },
 ];
 
-// GET /api/portfolio/alert-preferences
 router.get('/alert-preferences', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
@@ -270,7 +248,6 @@ router.get('/alert-preferences', requireAuth, async (req, res) => {
   }
 });
 
-// PUT /api/portfolio/alert-preferences
 router.put('/alert-preferences', requireAuth, async (req, res) => {
   const { preferences } = req.body;
   if (!Array.isArray(preferences) || preferences.length === 0) {
@@ -298,53 +275,67 @@ router.put('/alert-preferences', requireAuth, async (req, res) => {
   }
 });
 
-// ─── Leaderboard ──────────────────────────────────────────────────────────────
+// ─── Leaderboard ─────────────────────────────────────────────────────────────
 
-// GET /api/portfolio/leaderboard — global leaderboard
+// GET /api/portfolio/leaderboard?sort=portfolio|xp
 router.get('/leaderboard', requireAuth, async (req, res) => {
+  const sortMode = req.query.sort === 'xp' ? 'xp' : 'portfolio';
   try {
-    // Get all opted-in users
     const usersResult = await pool.query(
       `SELECT id, "displayName" FROM "User" WHERE "leaderboardOptIn" = true`
     );
     const users = usersResult.rows;
-
     if (users.length === 0) return res.json([]);
 
-    // Get latest snapshot for each user
     const snapshots = await Promise.all(
       users.map(u =>
         pool.query(
           `SELECT "dailyPctChange" FROM "PortfolioSnapshot"
-           WHERE "userId" = $1
-           ORDER BY "snapshotAt" DESC
-           LIMIT 1`,
+           WHERE "userId" = $1 ORDER BY "snapshotAt" DESC LIMIT 1`,
           [u.id]
         )
       )
     );
 
-    const entries = users
-      .map((u, i) => ({
-        userId:         u.id,
-        displayName:    u.displayName || `Trader #${u.id.slice(-4)}`,
-        dailyPctChange: snapshots[i].rows[0]
-          ? parseFloat(snapshots[i].rows[0].dailyPctChange)
-          : null,
+    // Get XP for all users
+    const userIds = users.map(u => u.id);
+    const statsRows = await prisma.userStats.findMany({
+      where: { userId: { in: userIds } },
+      select: { userId: true, xp: true, streak: true },
+    });
+    const statsMap = new Map(statsRows.map(s => [s.userId, s]));
+
+    const entries = users.map((u, i) => {
+      const xp = statsMap.get(u.id)?.xp || 0;
+      const tierInfo = getTierInfo(xp);
+      return {
+        userId: u.id,
+        displayName: u.displayName || `Trader #${u.id.slice(-4)}`,
+        dailyPctChange: snapshots[i].rows[0] ? parseFloat(snapshots[i].rows[0].dailyPctChange) : null,
+        xp,
+        tier: tierInfo.tier,
+        tierColor: tierInfo.tierColor,
+        streak: statsMap.get(u.id)?.streak || 0,
         isYou: u.id === req.userId,
-      }))
-      .filter(e => e.dailyPctChange !== null)
-      .sort((a, b) => b.dailyPctChange - a.dailyPctChange)
+      };
+    });
+
+    // Sort by chosen mode
+    const sorted = entries
+      .filter(e => sortMode === 'xp' ? true : e.dailyPctChange !== null)
+      .sort((a, b) => {
+        if (sortMode === 'xp') return b.xp - a.xp;
+        return b.dailyPctChange - a.dailyPctChange;
+      })
       .map((e, i) => ({ ...e, rank: i + 1 }));
 
-    res.json(entries);
+    res.json(sorted);
   } catch (err) {
     console.error('LEADERBOARD ERROR:', err);
     res.status(500).json({ error: 'Failed to fetch leaderboard.' });
   }
 });
 
-// PATCH /api/portfolio/leaderboard-optin
 router.patch('/leaderboard-optin', requireAuth, async (req, res) => {
   const { enabled } = req.body;
   if (typeof enabled !== 'boolean') {
