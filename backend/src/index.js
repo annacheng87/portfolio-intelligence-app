@@ -30,6 +30,8 @@ app.get('/health', (req, res) => {
 app.use('/api/auth',      require('./routes/auth'));
 app.use('/api/portfolio', require('./routes/portfolio'));
 app.use('/api/broker',    require('./routes/broker'));
+app.use('/api/portfolio', require('./routes/sectorExposure'));
+
 app.use('/api/trading',   require('./routes/trading'));
 app.use('/api/friends',   require('./routes/friends'));
 app.use('/api/stats',     require('./routes/stats'));      // ← NEW

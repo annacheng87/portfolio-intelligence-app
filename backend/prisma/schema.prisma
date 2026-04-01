@@ -210,3 +210,18 @@ model UserWeeklyChallenge {
 
   @@unique([userId, weekStart, challengeKey])
 }
+
+model SecurityMetadata {
+  id          String   @id @default(uuid())
+  ticker      String   @unique
+  companyName String   @default("") @map("company_name")
+  sector      String   @default("Unknown")
+  industry    String   @default("Unknown")
+  marketCap   BigInt?  @map("market_cap")
+  source      String   @default("polygon")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([sector])
+  @@index([updatedAt])
+  @@map("security_metadata")
+}
