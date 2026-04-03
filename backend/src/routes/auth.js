@@ -110,7 +110,7 @@ router.get('/google/callback',
       displayName: req.user.displayName,
     };
     const params = new URLSearchParams({ token, user: JSON.stringify(user) });
-    res.redirect(`${process.env.APP_URL}/dashboard?${params.toString()}`);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard?${params.toString()}`);
   }
 );
 
