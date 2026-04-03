@@ -32,6 +32,9 @@ model User {
 
   xpEvents             XpEvent[]
   weeklyChallengeDone  UserWeeklyChallenge[]
+
+  polymarketAlerts   PolymarketAlert[]
+
 }
 
 model BrokerConnection {
@@ -224,4 +227,57 @@ model SecurityMetadata {
   @@index([sector])
   @@index([updatedAt])
   @@map("security_metadata")
+}
+
+model PolymarketEvent {
+  id        String   @id
+  title     String
+  category  String?
+  endDate   DateTime?
+  syncedAt  DateTime @default(now())
+
+  markets  PolymarketMarket[]
+  mappings PolymarketEventMapping[]
+
+  slug      String?
+
+}
+
+model PolymarketMarket {
+  id              String   @id
+  eventId         String
+  question        String?
+  currentYesProb  Decimal?
+  previousYesProb Decimal?
+  lastShiftAt     DateTime?
+  updatedAt       DateTime @default(now())
+
+  event   PolymarketEvent  @relation(fields: [eventId], references: [id])
+  alerts  PolymarketAlert[]
+}
+
+model PolymarketEventMapping {
+  id       String   @id @default(uuid())
+  eventId  String
+  ticker   String
+  mappedAt DateTime @default(now())
+
+  event PolymarketEvent @relation(fields: [eventId], references: [id])
+
+  @@unique([eventId, ticker])
+}
+
+model PolymarketAlert {
+  id             String   @id @default(uuid())
+  userId         String
+  marketId       String
+  ticker         String
+  alertType      String
+  message        String
+  shiftMagnitude Decimal?
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  user   User             @relation(fields: [userId], references: [id])
+  market PolymarketMarket @relation(fields: [marketId], references: [id])
 }

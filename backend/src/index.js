@@ -36,6 +36,14 @@ app.use('/api/trading',   require('./routes/trading'));
 app.use('/api/friends',   require('./routes/friends'));
 app.use('/api/stats',     require('./routes/stats'));      // ← NEW
 
+try {
+  app.use('/api/polymarket', require('./routes/polymarket'));
+  console.log('[OK] polymarket routes mounted');
+} catch (err) {
+  console.error('[FAIL] polymarket routes failed to mount:', err);
+}
+
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
   startScheduler();

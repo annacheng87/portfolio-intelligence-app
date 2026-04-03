@@ -75,6 +75,7 @@ const NAV_ITEMS=[
   {id:'trade',      label:'Trade',       icon:'⊞'},
   {id:'social',     label:'Social',      icon:'◎'},
   {id:'alerts',     label:'Alerts',      icon:'◉'},
+  {id:'macro',      label:'Macro Alerts',icon:'⬡', href:'/macro-alerts'},
   {id:'settings',   label:'Settings',    icon:'⊙'},
 ];
 
@@ -499,7 +500,7 @@ export default function DashboardPage(){
         </div>
         <nav style={{flex:1,padding:'12px 10px',overflowY:'auto'}}>
           {NAV_ITEMS.map(item=>(
-            <button key={item.id} onClick={()=>setActiveNav(item.id)} style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'10px 12px',borderRadius:10,border:'none',cursor:'pointer',background:activeNav===item.id?t.navActive:'transparent',color:activeNav===item.id?t.text:t.textMuted,fontSize:14,fontWeight:activeNav===item.id?600:400,marginBottom:2,textAlign:'left',transition:'all 0.15s'}}>
+            <button key={item.id} onClick={()=>item.href?router.push(item.href):setActiveNav(item.id)}style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'10px 12px',borderRadius:10,border:'none',cursor:'pointer',background:activeNav===item.id?t.navActive:'transparent',color:activeNav===item.id?t.text:t.textMuted,fontSize:14,fontWeight:activeNav===item.id?600:400,marginBottom:2,textAlign:'left',transition:'all 0.15s'}}>
               <span style={{fontSize:16,opacity:activeNav===item.id?1:0.6}}>{item.icon}</span>
               {item.label}
               {item.id==='alerts'&&alerts.filter(a=>!a.isRead).length>0&&(
