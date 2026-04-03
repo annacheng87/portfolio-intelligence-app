@@ -28,8 +28,8 @@ app.use(cors({
 app.use(express.json());
 
 const passport = require('passport');
-require('./routes/auth');
 app.use(passport.initialize());
+app.use('/api/auth', require('./routes/auth'));
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
@@ -61,7 +61,7 @@ try {
 }
 
 
-app.listen(PORT, '0.0.0.0', () => {
+/*app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://0.0.0.0:${PORT}`);
   startScheduler();
 });
