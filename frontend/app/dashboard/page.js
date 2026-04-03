@@ -70,16 +70,16 @@ const TIMEFRAMES=[
   {label:'3M',days:90},{label:'1Y',days:365},{label:'ALL',days:999},
 ];
 const NAV_ITEMS=[
-  {id:'dashboard',  label:'Dashboard',   icon:'▦'},
-  {id:'performance',label:'Performance', icon:'↗'},
-  {id:'trade',      label:'Trade',       icon:'⊞'},
-  {id:'social',     label:'Social',      icon:'◎'},
-  {id:'alerts',     label:'Alerts',      icon:'◉'},
-  {id:'macro',      label:'Macro Alerts',icon:'⬡', href:'/macro-alerts'},
-  { id:'signals', label:'Signal Fusion', icon:'◈', href:'/signals' },
-    {id:'recommendations', label:'Recommendations', icon:'✦', href:'/recommendations'},
-  {id:'settings',   label:'Settings',    icon:'⊙'},
-  
+ {id:'dashboard',       label:'Dashboard',       icon:'▦'},
+  {id:'performance',     label:'Performance',     icon:'↗'},
+  {id:'trade',           label:'Trade',           icon:'⊞'},
+  {id:'social',          label:'Social',          icon:'◎'},
+  {id:'alerts',          label:'Alerts',          icon:'◉'},
+  {id:'macro',           label:'Macro Alerts',    icon:'⬡', href:'/macro-alerts'},
+  {id:'signals',         label:'Signal Fusion',   icon:'◈', href:'/signals'},
+  {id:'recommendations', label:'Recommendations', icon:'✦', href:'/recommendations'},
+  {id:'sector',          label:'Sector Exposure', icon:'◑', href:'/sector-exposure'},
+  {id:'settings',        label:'Settings',        icon:'⊙'},
 ];
 
 // ─── Social Tab ────────────────────────────────────────────────────────────────
