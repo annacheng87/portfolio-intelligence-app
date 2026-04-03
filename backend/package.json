@@ -19,12 +19,13 @@
     "jsonwebtoken": "^9.0.3",
     "nanoid": "^3.3.11",
     "node-cron": "^4.2.1",
+    "node-fetch": "^2.7.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "pg": "^8.20.0",
     "prisma": "^6.19.2",
     "snaptrade-typescript-sdk": "^9.0.173",
-    "uuid": "^13.0.0",
+    "uuid": "^9.0.1",
     "yahoo-finance2": "^3.14.0"
   },
   "devDependencies": {
