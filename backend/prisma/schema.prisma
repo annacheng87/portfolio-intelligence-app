@@ -35,6 +35,8 @@ model User {
 
   polymarketAlerts   PolymarketAlert[]
 
+  signalScores SignalScore[]
+
 }
 
 model BrokerConnection {
@@ -280,4 +282,22 @@ model PolymarketAlert {
 
   user   User             @relation(fields: [userId], references: [id])
   market PolymarketMarket @relation(fields: [marketId], references: [id])
+}
+
+model SignalScore {
+  id             String   @id @default(uuid())
+  ticker         String
+  userId         String
+  priceScore     Decimal?
+  volumeScore    Decimal?
+  newsScore      Decimal?
+  redditScore    Decimal?
+  polyScore      Decimal?
+  compositeScore Decimal
+  label          String
+  computedAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([ticker, userId])
 }

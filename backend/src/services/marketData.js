@@ -48,7 +48,7 @@ async function getSnapshots(tickers) {
       });
     }
     // Small delay to avoid rate limiting on free tier
-await new Promise(resolve => setTimeout(resolve, 1000));
+await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
   return results;

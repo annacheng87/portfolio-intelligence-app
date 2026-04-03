@@ -36,6 +36,9 @@ app.use('/api/trading',   require('./routes/trading'));
 app.use('/api/friends',   require('./routes/friends'));
 app.use('/api/stats',     require('./routes/stats'));      // ← NEW
 
+
+app.use('/api/signals', require('./routes/signals'));
+
 try {
   app.use('/api/polymarket', require('./routes/polymarket'));
   console.log('[OK] polymarket routes mounted');

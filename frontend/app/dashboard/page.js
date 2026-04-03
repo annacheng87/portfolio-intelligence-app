@@ -76,7 +76,9 @@ const NAV_ITEMS=[
   {id:'social',     label:'Social',      icon:'◎'},
   {id:'alerts',     label:'Alerts',      icon:'◉'},
   {id:'macro',      label:'Macro Alerts',icon:'⬡', href:'/macro-alerts'},
+  { id:'signals', label:'Signal Fusion', icon:'◈', href:'/signals' },
   {id:'settings',   label:'Settings',    icon:'⊙'},
+  
 ];
 
 // ─── Social Tab ────────────────────────────────────────────────────────────────
