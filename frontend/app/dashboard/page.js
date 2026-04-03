@@ -48,12 +48,12 @@ const TIERS = [
   { name:'Diamond', min:6000, max:9999, color:'#b388ff', bg:'rgba(179,136,255,0.15)', icon:'👑' },
 ];
 const CHALLENGES = [
-  { id:'first_trade',    label:'First Trade',       desc:'Place your first order',                icon:'🎯', xp:100,  done:false },
-  { id:'green_3',        label:'3-Day Streak',       desc:'3 consecutive green days',             icon:'🔥', xp:150,  done:false },
-  { id:'diversified',    label:'Diversified',        desc:'Hold 5+ different tickers',            icon:'🌐', xp:200,  done:false },
-  { id:'watchlist_10',   label:'Watchlist Pro',      desc:'Add 10 tickers to watchlist',          icon:'👁',  xp:75,   done:false },
-  { id:'leaderboard_10', label:'Top 10',             desc:'Reach top 10 on the leaderboard',      icon:'🏆', xp:500,  done:false },
-  { id:'invite_friend',  label:'Invite a Friend',    desc:'Get someone to join via your code',    icon:'🤝', xp:250,  done:false },
+  { id:'first_trade',    label:'First Trade',    desc:'Place your first order',             icon:'🎯', xp:100,  done:false },
+  { id:'green_3',        label:'3-Day Streak',   desc:'3 consecutive green days',           icon:'🔥', xp:150,  done:false },
+  { id:'diversified',    label:'Diversified',    desc:'Hold 5+ different tickers',          icon:'🌐', xp:200,  done:false },
+  { id:'watchlist_10',   label:'Watchlist Pro',  desc:'Add 10 tickers to watchlist',        icon:'👁',  xp:75,   done:false },
+  { id:'leaderboard_10', label:'Top 10',         desc:'Reach top 10 on the leaderboard',   icon:'🏆', xp:500,  done:false },
+  { id:'invite_friend',  label:'Invite a Friend',desc:'Get someone to join via your code', icon:'🤝', xp:250,  done:false },
 ];
 
 function getTier(xp){ return TIERS.slice().reverse().find(t=>xp>=t.min)||TIERS[0]; }
@@ -70,7 +70,7 @@ const TIMEFRAMES=[
   {label:'3M',days:90},{label:'1Y',days:365},{label:'ALL',days:999},
 ];
 const NAV_ITEMS=[
- {id:'dashboard',       label:'Dashboard',       icon:'▦'},
+  {id:'dashboard',       label:'Dashboard',       icon:'▦'},
   {id:'performance',     label:'Performance',     icon:'↗'},
   {id:'trade',           label:'Trade',           icon:'⊞'},
   {id:'social',          label:'Social',          icon:'◎'},
@@ -92,7 +92,6 @@ function SocialTab({t, user}){
   const[loading,setLoading]=useState(true);
   const[prevRank,setPrevRank]=useState(null);
   const[rankDelta,setRankDelta]=useState(null);
-  // Mock XP/streak — in production these would come from the API
   const xp=1240; const streak=4; const tier=getTier(xp); const nextTier=getNextTier(xp);
   const xpPct=Math.round(((xp-tier.min)/(nextTier.max-tier.min))*100);
 
@@ -114,8 +113,6 @@ function SocialTab({t, user}){
 
   return(
     <div style={{display:'flex',flexDirection:'column',gap:20}}>
-
-      {/* XP / Tier bar */}
       <div style={{background:t.surface,border:`1px solid ${tier.color}44`,borderRadius:16,padding:20,display:'flex',alignItems:'center',gap:20}}>
         <div style={{width:56,height:56,borderRadius:16,background:tier.bg,border:`2px solid ${tier.color}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,flexShrink:0}}>{tier.icon}</div>
         <div style={{flex:1,minWidth:0}}>
@@ -137,8 +134,6 @@ function SocialTab({t, user}){
           <div style={{fontSize:10,color:t.textMuted,textTransform:'uppercase',letterSpacing:'0.06em'}}>Streak</div>
         </div>
       </div>
-
-      {/* Challenges */}
       <div style={{background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:20}}>
         <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:14,display:'flex',alignItems:'center',gap:8}}>
           <span>🎖</span> Challenges
@@ -154,8 +149,6 @@ function SocialTab({t, user}){
           ))}
         </div>
       </div>
-
-      {/* Leaderboard */}
       <div style={{background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:24}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
           <div style={{display:'flex',alignItems:'center',gap:10}}>
@@ -212,8 +205,6 @@ function SocialTab({t, user}){
           </table>
         )}
       </div>
-
-      {/* Friends list */}
       <div style={{background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:20}}>
         <div style={{fontSize:13,fontWeight:700,color:t.text,marginBottom:14}}>Friends ({friends.length})</div>
         {friends.length===0
@@ -293,7 +284,6 @@ function AlertCard({alert,t}){
       </div>
     );
   }
-  // Generic alert
   return(
     <div style={{background:t.surface2,border:`1px solid ${t.border}`,borderRadius:14,padding:14,opacity:alert.isRead?0.55:1}}>
       <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
@@ -337,18 +327,17 @@ export default function DashboardPage(){
   const[orderResult,setOrderResult]=useState(null);
   const[orderError,setOrderError]=useState(null);
   const[orderHistory,setOrderHistory]=useState([]);
-  // Settings sub-tabs
   const[settingsTab,setSettingsTab]=useState('account');
-  // Invite / friends (moved to settings)
   const[myCode,setMyCode]=useState('');
   const[redeemInput,setRedeemInput]=useState('');
   const[redeemMsg,setRedeemMsg]=useState(null);
   const[copied,setCopied]=useState(false);
+  const[dashSignals,setDashSignals]=useState([]);
+  const[dashRecs,setDashRecs]=useState([]);
 
   const router=useRouter();
   const t=darkMode?DARK:LIGHT;
 
-  // Filtered snapshots based on selected timeframe
   const tfDays=TIMEFRAMES.find(tf=>tf.label===chartRange)?.days||30;
   const snapshots=allSnapshots.length>0
     ? allSnapshots.slice(-Math.min(tfDays+1,allSnapshots.length))
@@ -363,6 +352,7 @@ export default function DashboardPage(){
     const cached=localStorage.getItem('user');
     if(cached)setUser(JSON.parse(cached));
     fetchAll();
+    fetchDashboardWidgets();
   },[]);
 
   useEffect(()=>{if(activeNav==='performance'&&!performance)fetchPerformance();},[activeNav]);
@@ -375,6 +365,14 @@ export default function DashboardPage(){
       const[h,w,a,b,p]=await Promise.all([api.get('/portfolio/holdings'),api.get('/portfolio/watchlist'),api.get('/portfolio/alerts'),api.get('/broker/status'),api.get('/portfolio/alert-preferences')]);
       setHoldings(h.data.holdings);setWatchlist(w.data.watchlist);setAlerts(a.data.alerts);setBrokerStatus(b.data);
       const map={};for(const pref of p.data.preferences){map[pref.alertType]={enabled:pref.enabled,threshold:pref.threshold??pref.defaultThreshold??null};}setPrefs(map);
+    }catch(err){console.error(err);}
+  }
+
+  async function fetchDashboardWidgets(){
+    try{
+      const[s,r]=await Promise.all([api.get('/signals'),api.get('/recommendations')]);
+      setDashSignals((s.data.signals||[]).slice(0,4));
+      setDashRecs((r.data.recommendations||[]).slice(0,3));
     }catch(err){console.error(err);}
   }
 
@@ -503,7 +501,7 @@ export default function DashboardPage(){
         </div>
         <nav style={{flex:1,padding:'12px 10px',overflowY:'auto'}}>
           {NAV_ITEMS.map(item=>(
-            <button key={item.id} onClick={()=>item.href?router.push(item.href):setActiveNav(item.id)}style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'10px 12px',borderRadius:10,border:'none',cursor:'pointer',background:activeNav===item.id?t.navActive:'transparent',color:activeNav===item.id?t.text:t.textMuted,fontSize:14,fontWeight:activeNav===item.id?600:400,marginBottom:2,textAlign:'left',transition:'all 0.15s'}}>
+            <button key={item.id} onClick={()=>item.href?router.push(item.href):setActiveNav(item.id)} style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'10px 12px',borderRadius:10,border:'none',cursor:'pointer',background:activeNav===item.id?t.navActive:'transparent',color:activeNav===item.id?t.text:t.textMuted,fontSize:14,fontWeight:activeNav===item.id?600:400,marginBottom:2,textAlign:'left',transition:'all 0.15s'}}>
               <span style={{fontSize:16,opacity:activeNav===item.id?1:0.6}}>{item.icon}</span>
               {item.label}
               {item.id==='alerts'&&alerts.filter(a=>!a.isRead).length>0&&(
@@ -579,6 +577,7 @@ export default function DashboardPage(){
                     </div>
                   ))}
                 </div>
+
                 <div style={{background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:24,marginBottom:24}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
                     <span style={{fontSize:15,fontWeight:600,color:t.text}}>Portfolio Performance</span>
@@ -594,18 +593,75 @@ export default function DashboardPage(){
                     </div>}
                   </div>
                 </div>
+
                 {!brokerStatus?.connected&&(
-                  <div style={{background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:20,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                  <div style={{background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:20,display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
                     <div><div style={{fontSize:14,fontWeight:600,color:t.text,marginBottom:4}}>Connect your broker</div><div style={{fontSize:13,color:t.textMuted}}>Link your brokerage account to see live positions.</div></div>
                     <button onClick={connectBroker} style={btn}>Connect Broker</button>
                   </div>
                 )}
                 {brokerStatus?.connected&&(
-                  <div style={{background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:16,display:'flex',alignItems:'center',gap:12}}>
+                  <div style={{background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:16,display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
                     <div style={{width:8,height:8,borderRadius:'50%',background:t.green}}/>
                     <span style={{fontSize:13,color:t.green,fontWeight:600}}>Broker connected</span>
                     {brokerStatus.connections?.[0]?.lastSyncedAt&&<span style={{fontSize:12,color:t.textMuted}}>Last synced: {new Date(brokerStatus.connections[0].lastSyncedAt).toLocaleString()}</span>}
                     <button onClick={syncHoldings} style={{...ghost,marginLeft:'auto',padding:'6px 14px',fontSize:12}}>Sync now</button>
+                  </div>
+                )}
+
+                {/* ── Signal Fusion Widget ── */}
+                {dashSignals.length>0&&(
+                  <div style={{background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:20,marginBottom:16}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+                      <span style={{fontSize:14,fontWeight:600,color:t.text}}>◈ Signal Fusion</span>
+                      <button onClick={()=>router.push('/signals')} style={{fontSize:12,color:t.accent,background:'none',border:'none',cursor:'pointer'}}>View all →</button>
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10}}>
+                      {dashSignals.map(s=>{
+                        const labelColor=s.label==='bullish'?t.green:s.label==='bearish'?t.red:'#f0a500';
+                        const labelBg=s.label==='bullish'?t.greenDim:s.label==='bearish'?t.redDim:'#f0a50022';
+                        return(
+                          <div key={s.id} style={{background:t.surface2,border:`1px solid ${t.border}`,borderRadius:12,padding:'12px 14px'}}>
+                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                              <span style={{fontSize:13,fontWeight:700,color:t.text}}>{s.ticker}</span>
+                              <span style={{fontSize:10,fontWeight:700,padding:'2px 6px',borderRadius:6,background:labelBg,color:labelColor,textTransform:'uppercase'}}>{s.label}</span>
+                            </div>
+                            <div style={{display:'flex',alignItems:'center',gap:8}}>
+                              <div style={{flex:1,height:4,background:t.border,borderRadius:2,overflow:'hidden'}}>
+                                <div style={{width:`${s.compositeScore}%`,height:'100%',background:labelColor,borderRadius:2}}/>
+                              </div>
+                              <span style={{fontSize:12,fontWeight:700,color:labelColor}}>{Math.round(s.compositeScore)}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Recommendations Widget ── */}
+                {dashRecs.length>0&&(
+                  <div style={{background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:20,marginBottom:16}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+                      <span style={{fontSize:14,fontWeight:600,color:t.text}}>✦ Top Recommendations</span>
+                      <button onClick={()=>router.push('/recommendations')} style={{fontSize:12,color:t.accent,background:'none',border:'none',cursor:'pointer'}}>View all →</button>
+                    </div>
+                    <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                      {dashRecs.map(rec=>{
+                        const isNew=rec.recType==='new_pick';
+                        const labelColor=rec.label==='bullish'?t.green:rec.label==='bearish'?t.red:'#f0a500';
+                        return(
+                          <div key={rec.id} style={{background:t.surface2,border:`1px solid ${t.border}`,borderRadius:12,padding:'12px 14px'}}>
+                            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                              <span style={{fontSize:13,fontWeight:700,color:t.text}}>{rec.ticker}</span>
+                              <span style={{fontSize:10,fontWeight:700,padding:'2px 6px',borderRadius:6,background:isNew?`${t.accent}22`:t.surface,color:isNew?t.accent:t.textMuted,textTransform:'uppercase'}}>{isNew?'+ New':'↑ Add'}</span>
+                              {rec.signalScore&&<span style={{fontSize:11,fontWeight:700,color:labelColor,marginLeft:'auto'}}>Score {Math.round(rec.signalScore)}</span>}
+                            </div>
+                            <div style={{fontSize:12,color:t.textMuted,lineHeight:1.5}}>{rec.reasoning?.slice(0,100)}...</div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
@@ -734,7 +790,6 @@ export default function DashboardPage(){
             {/* ── Settings ── */}
             {activeNav==='settings'&&(
               <div style={{maxWidth:600}}>
-                {/* Tab bar */}
                 <div style={{display:'flex',gap:4,background:t.surface2,borderRadius:12,padding:4,marginBottom:24,width:'fit-content'}}>
                   {['account','alerts','friends'].map(tab=>(
                     <button key={tab} onClick={()=>setSettingsTab(tab)} style={tabBtn(settingsTab===tab)}>
@@ -742,8 +797,6 @@ export default function DashboardPage(){
                     </button>
                   ))}
                 </div>
-
-                {/* Account tab */}
                 {settingsTab==='account'&&(
                   <div style={card}>
                     <div style={{fontSize:15,fontWeight:700,color:t.text,marginBottom:24}}>Account Settings</div>
@@ -755,8 +808,6 @@ export default function DashboardPage(){
                     </div>
                   </div>
                 )}
-
-                {/* Alert Engine tab */}
                 {settingsTab==='alerts'&&(
                   <div style={card}>
                     <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:24}}>
@@ -806,8 +857,6 @@ export default function DashboardPage(){
                     </div>
                   </div>
                 )}
-
-                {/* Friends & Invite tab */}
                 {settingsTab==='friends'&&(
                   <div style={{display:'flex',flexDirection:'column',gap:16}}>
                     <div style={card}>
