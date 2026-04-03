@@ -14,12 +14,18 @@ function DonutChart({ sectors, size = 200, t }) {
   const total = sectors.reduce((s, sec) => s + sec.weightPct, 0);
   if (total === 0) return null;
 
-  let cumulative = 0;
-  const slices = sectors.map(sec => {
-    const start = cumulative;
-    cumulative += (sec.weightPct / total) * 360;
-    return { ...sec, startDeg: start, endDeg: cumulative };
+ const slices = sectors.reduce((acc, sec) => {
+  const prevEnd = acc.length ? acc[acc.length - 1].endDeg : 0;
+  const endDeg = prevEnd + (sec.weightPct / total) * 360;
+
+  acc.push({
+    ...sec,
+    startDeg: prevEnd,
+    endDeg,
   });
+
+  return acc;
+}, []);
 
   function polarToCartesian(cx, cy, r, deg) {
     const rad = (deg - 90) * Math.PI / 180;

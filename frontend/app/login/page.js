@@ -1,9 +1,9 @@
-﻿'use client';
-import { useState, useEffect } from 'react';
+'use client';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '../../lib/api';
 
-export default function LoginPage() {
+function LoginContent() {
   const [step, setStep]         = useState('login');
   const [userId, setUserId]     = useState('');
   const [email, setEmail]       = useState('');
@@ -73,7 +73,7 @@ export default function LoginPage() {
   }
 
   function handleGoogleLogin() {
-    window.location.href = 'http://localhost:4000/api/auth/google';
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL?.replace('/api','') || 'http://localhost:4000'}/api/auth/google`;
   }
 
   return (
@@ -106,11 +106,11 @@ export default function LoginPage() {
             <form onSubmit={handleLogin} style={{display:'flex',flexDirection:'column',gap:14}}>
               <div>
                 <label style={s.label}>Email address</label>
-                <input style={s.input} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required/>
+                <input style={s.input} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" required/>
               </div>
               <div>
                 <label style={s.label}>Password</label>
-                <input style={s.input} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required/>
+                <input style={s.input} type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" required/>
               </div>
               {error && <div style={s.error}>{error}</div>}
               <button style={s.btn} type="submit" disabled={loading}>
@@ -118,7 +118,7 @@ export default function LoginPage() {
               </button>
             </form>
             <p style={s.footer}>
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <a href="/register" style={s.link}>Create one</a>
             </p>
             <div style={s.securityBadge}>SECURE PROFESSIONAL TRADING ENVIRONMENT</div>
@@ -134,17 +134,17 @@ export default function LoginPage() {
               <input
                 style={{...s.input,textAlign:'center',fontSize:28,letterSpacing:'0.35em',fontWeight:700,padding:'16px 12px',color:'#00c853',fontFamily:'monospace'}}
                 type="text" inputMode="numeric" maxLength={6} value={code}
-                onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
+                onChange={e=>setCode(e.target.value.replace(/\D/g,''))}
                 placeholder="000000" required autoFocus
               />
               {error  && <div style={s.error}>{error}</div>}
               {resent && <div style={s.success}>✅ New code sent to your email!</div>}
-              <button style={{...s.btn,opacity:loading||code.length!==6?0.5:1}} type="submit" disabled={loading || code.length !== 6}>
+              <button style={{...s.btn,opacity:loading||code.length!==6?0.5:1}} type="submit" disabled={loading||code.length!==6}>
                 {loading ? 'Verifying...' : 'Verify & Sign in →'}
               </button>
             </form>
             <div style={{display:'flex',justifyContent:'space-between',marginTop:20}}>
-              <button style={s.ghostBtn} onClick={() => { setStep('login'); setCode(''); setError(''); }}>← Back</button>
+              <button style={s.ghostBtn} onClick={()=>{setStep('login');setCode('');setError('');}}>← Back</button>
               <button style={s.ghostBtn} onClick={handleResend}>Resend code</button>
             </div>
           </>
@@ -154,10 +154,42 @@ export default function LoginPage() {
   );
 }
 
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{minHeight:'100vh',background:'#0a0a0a'}}/>}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
 const s = {
-  page: { minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0a0a0a',fontFamily:'"DM Sans",system-ui,sans-serif',position:'relative',overflow:'hidden' },
-  grid: { position:'fixed',inset:0,backgroundImage:`linear-gradient(rgba(0,200,83,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,83,0.03) 1px,transparent 1px)`,backgroundSize:'40px 40px',pointerEvents:'none' },
-  card: { position:'relative',background:'#111111',border:'1px solid #2a2a2a',borderRadius:20,padding:'40px 36px',width:'100%',maxWidth:420,boxShadow:'0 24px 80px rgba(0,0,0,0.6)' },
+  page: {
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#0a0a0a',
+    fontFamily: '"DM Sans", system-ui, sans-serif',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  grid: {
+    position: 'fixed',
+    inset: 0,
+    backgroundImage: `linear-gradient(rgba(0,200,83,0.03) 1px, transparent 1px),linear-gradient(90deg, rgba(0,200,83,0.03) 1px, transparent 1px)`,
+    backgroundSize: '40px 40px',
+    pointerEvents: 'none',
+  },
+  card: {
+    position: 'relative',
+    background: '#111111',
+    border: '1px solid #2a2a2a',
+    borderRadius: 20,
+    padding: '40px 36px',
+    width: '100%',
+    maxWidth: 420,
+    boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+  },
   logoRow: { display:'flex',alignItems:'center',justifyContent:'center',gap:10,marginBottom:28 },
   logoIcon: { width:36,height:36,borderRadius:10,background:'#00c853',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,color:'#000',fontWeight:700 },
   logoText: { fontSize:17,fontWeight:700,color:'#ffffff',letterSpacing:'-0.02em' },

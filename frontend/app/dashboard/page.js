@@ -779,7 +779,7 @@ export default function DashboardPage(){
               <div style={{maxWidth:680}}>
                 <div style={{fontSize:16,fontWeight:700,color:t.text,marginBottom:20}}>Recent Alerts</div>
                 {alerts.length===0
-                  ?<div style={{...card,textAlign:'center',color:t.textMuted,padding:'48px 0'}}>No alerts yet. They'll appear here when triggered.</div>
+                  ?<div style={{...card,textAlign:'center',color:t.textMuted,padding:'48px 0'}}>No alerts yet. They&apos;ll appear here when triggered.</div>
                   :<div style={{display:'flex',flexDirection:'column',gap:12}}>
                     {alerts.slice(0,20).map(alert=><AlertCard key={alert.id} alert={alert} t={t}/>)}
                   </div>
