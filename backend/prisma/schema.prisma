@@ -37,6 +37,9 @@ model User {
 
   signalScores SignalScore[]
 
+  recommendations StockRecommendation[]
+  
+
 }
 
 model BrokerConnection {
@@ -300,4 +303,20 @@ model SignalScore {
   user User @relation(fields: [userId], references: [id])
 
   @@unique([ticker, userId])
+}
+
+model StockRecommendation {
+  id          String   @id @default(uuid())
+  userId      String
+  ticker      String
+  recType     String
+  reasoning   String
+  signalScore Decimal?
+  label       String?
+  isNew       Boolean  @default(true)
+  computedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, ticker])
 }

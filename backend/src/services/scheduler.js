@@ -3,6 +3,8 @@ const { Pool } = require('pg');
 const { evaluateWatchlists } = require('./alertEvaluator');
 const { sendDailyDigestEmail, sendWeeklyDigestEmail } = require('./emailService');
 const { runSignalFusion } = require('./signalFusionService');
+const { runRecommendationsForAllUsers } = require('./recommendationService');
+
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -269,6 +271,16 @@ function startScheduler() {
       console.error('[SignalFusion] Scheduled error:', err);
     }
   }, { timezone: 'America/New_York' });
+
+  // Recommendations — daily at 7 PM ET Mon–Fri (after signal fusion)
+cron.schedule('0 19 * * 1-5', async () => {
+  console.log('[Recommendations] Scheduled run at', new Date().toISOString());
+  try {
+    await runRecommendationsForAllUsers();
+  } catch (err) {
+    console.error('[Recommendations] Scheduled error:', err);
+  }
+}, { timezone: 'America/New_York' });
 
   // Daily digest — 6:00 PM ET Mon–Fri
   cron.schedule('0 18 * * 1-5', async () => {

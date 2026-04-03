@@ -77,6 +77,7 @@ const NAV_ITEMS=[
   {id:'alerts',     label:'Alerts',      icon:'◉'},
   {id:'macro',      label:'Macro Alerts',icon:'⬡', href:'/macro-alerts'},
   { id:'signals', label:'Signal Fusion', icon:'◈', href:'/signals' },
+    {id:'recommendations', label:'Recommendations', icon:'✦', href:'/recommendations'},
   {id:'settings',   label:'Settings',    icon:'⊙'},
   
 ];
