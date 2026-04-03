@@ -18,11 +18,13 @@ const PORT = process.env.PORT || 4000;
 
 app.use(cors({
   origin: [
-    'https://your-app.vercel.app',
+    'https://portfolio-intelligence-app-ri7l-cafjj8tsj-annacheng87s-projects.vercel.app',
+    'http://localhost:3000',
     'http://localhost:8080',
   ],
   credentials: true,
 }));
+
 app.use(express.json());
 
 const passport = require('passport');
